@@ -1,0 +1,32 @@
+Deployment Plan
+
+Backend:
+- Platform: Render or Railway
+- Root: backend/
+- Build command: npm install
+- Start command: npm start
+- Env vars:
+  - PORT
+  - MONGO_URI
+  - JWT_SECRET
+  - JWT_EXPIRES_IN
+  - ADMIN_EMAIL
+  - ADMIN_PASSWORD
+  - IIIT_DOMAIN
+  - FRONTEND_URL
+
+Frontend:
+- Platform: Vercel or Netlify
+- Root: frontend/
+- Build command: npm run build
+- Output dir: dist
+- Env vars:
+  - VITE_API_BASE_URL=<deployed-backend-url>/api
+
+Post-deploy checks:
+1. Seed admin on backend once: npm run seed:admin
+2. Login as admin and create organizer
+3. Organizer creates and publishes event
+4. Participant signs up, registers, uploads payment proof
+5. Organizer verifies payment and checks in using QR token
+6. Forum posts and calendar links are functional
