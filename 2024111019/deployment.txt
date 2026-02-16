@@ -1,0 +1,2 @@
+Frontend URL: https://felicity-frontend-v1.vercel.app
+Backend URL: https://felicity-api-production.up.railway.app
