@@ -1,6 +1,16 @@
 import { useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+
+const NavLink = ({ to, children }) => {
+  const { pathname } = useLocation();
+  const active = pathname === to || pathname.startsWith(to + '/');
+  return (
+    <Link to={to} style={active ? { color: 'var(--gold)', background: 'rgba(245,197,66,0.1)' } : {}}>
+      {children}
+    </Link>
+  );
+};
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -8,23 +18,54 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <Link to="/" className="brand">
-        Felicity EMS
+        <img
+          src="https://felicity.iiit.ac.in/_next/image?url=%2Flogo.png&w=96&q=75"
+          alt="Felicity"
+          className="brand-logo"
+        />
+        Felicity
       </Link>
 
       <div className="nav-links">
-        <Link to="/events">Browse Events</Link>
-        {user?.role === 'participant' && <Link to="/participant/dashboard">Dashboard</Link>}
-        {user?.role === 'organizer' && <Link to="/organizer/dashboard">Organizer</Link>}
-        {user?.role === 'admin' && <Link to="/admin/dashboard">Admin</Link>}
-        {user ? (
-          <button type="button" onClick={logout} className="btn btn-small">
-            Logout
-          </button>
-        ) : (
+        {user?.role === 'participant' && (
           <>
-            <Link to="/login">Login</Link>
-            <Link to="/register">Register</Link>
+            <NavLink to="/participant/dashboard">Dashboard</NavLink>
+            <NavLink to="/events">Events</NavLink>
+            <NavLink to="/clubs">Clubs</NavLink>
+            <NavLink to="/participant/profile">Profile</NavLink>
           </>
+        )}
+
+        {user?.role === 'organizer' && (
+          <>
+            <NavLink to="/organizer/dashboard">Dashboard</NavLink>
+            <NavLink to="/organizer/create-event">Create</NavLink>
+            <NavLink to="/organizer/merch-orders">Orders</NavLink>
+            <NavLink to="/organizer/profile">Profile</NavLink>
+          </>
+        )}
+
+        {user?.role === 'admin' && (
+          <>
+            <NavLink to="/admin/dashboard">Dashboard</NavLink>
+            <NavLink to="/admin/organizers">Clubs</NavLink>
+            <NavLink to="/admin/reset-requests">Resets</NavLink>
+          </>
+        )}
+
+        {!user && (
+          <>
+            <NavLink to="/events">Events</NavLink>
+            <NavLink to="/clubs">Clubs</NavLink>
+            <NavLink to="/login">Sign In</NavLink>
+            <Link to="/register" className="btn btn-small" style={{ marginLeft: 6 }}>Register</Link>
+          </>
+        )}
+
+        {user && (
+          <button type="button" onClick={logout} className="btn btn-small btn-outline" style={{ marginLeft: 6 }}>
+            Sign Out
+          </button>
         )}
       </div>
     </nav>

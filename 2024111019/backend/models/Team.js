@@ -7,7 +7,8 @@ const teamSchema = new mongoose.Schema(
     leader: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     maxMembers: { type: Number, default: 4 },
-    inviteCode: { type: String, required: true, unique: true }
+    inviteCode: { type: String, required: true, unique: true },
+    status: { type: String, enum: ['Forming', 'Complete', 'Registered'], default: 'Forming' }
   },
   { timestamps: true }
 );
