@@ -50,8 +50,6 @@ const BrowseEvents = () => {
           Discover <span className="gradient-text">Amazing</span> Events
         </h1>
         <p>Workshops, hackathons, merch drops, and more — all from IIIT Hyderabad's finest clubs.</p>
-        <div className="disco-ball" style={{ top: '15%', right: '12%', width: 40, height: 40, opacity: 0.5 }} />
-        <div className="disco-ball" style={{ bottom: '20%', left: '8%', width: 24, height: 24, opacity: 0.3, animationDelay: '-3s' }} />
       </div>
 
       <div className="container" style={{ paddingTop: 0 }}>
@@ -164,11 +162,6 @@ const BrowseEvents = () => {
               <p>Try adjusting your search or filters.</p>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="footer">
-          <p>Felicity — IIIT Hyderabad's Annual Cultural Fest · Made with ❤️</p>
         </div>
       </div>
     </div>

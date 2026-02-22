@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL, getAuthHeader } from '../../context/AuthContext';
 
+const ORGANIZER_CATEGORIES = ['Cultural', 'Technical', 'Sports', 'Literary', 'Music', 'Art', 'Entrepreneurship', 'Social Service', 'Media', 'Other'];
+
 const OrganizerProfile = () => {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({});
@@ -63,7 +65,10 @@ const OrganizerProfile = () => {
         <input value={form.name} onChange={set('name')} />
 
         <label>Category</label>
-        <input value={form.category} onChange={set('category')} />
+        <select value={form.category} onChange={set('category')}>
+          <option value="">Select Category</option>
+          {ORGANIZER_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
 
         <label>Description</label>
         <textarea value={form.description} onChange={set('description')} />

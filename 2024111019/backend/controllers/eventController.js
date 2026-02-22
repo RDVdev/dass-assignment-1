@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const Team = require('../models/Team');
 const User = require('../models/User');
 const QRCode = require('qrcode');
 const nodemailer = require('nodemailer');
@@ -12,6 +13,26 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS || ''
   }
 });
+
+// Auto-determine event status based on current time vs start/end dates
+const computeEventStatus = (event) => {
+  if (event.status === 'Draft' || event.status === 'Closed') return event.status;
+  const now = new Date();
+  if (event.endDate && now > new Date(event.endDate)) return 'Completed';
+  if (event.startDate && now >= new Date(event.startDate)) return 'Ongoing';
+  if (event.status === 'Published' || event.status === 'Ongoing' || event.status === 'Completed') return event.status;
+  return event.status;
+};
+
+// Apply auto-status to event and persist if changed
+const applyAutoStatus = async (event) => {
+  const computed = computeEventStatus(event);
+  if (computed !== event.status) {
+    event.status = computed;
+    await event.save();
+  }
+  return event;
+};
 
 const sendTicketEmail = async (userEmail, ticket, event) => {
   if (!process.env.SMTP_USER) return;
@@ -89,6 +110,8 @@ exports.getEvents = async (req, res) => {
         .populate('organizer', 'name email category')
         .sort({ viewCount: -1, registrationCount: -1 })
         .limit(5);
+      // Auto-determine status for each event
+      for (const ev of events) await applyAutoStatus(ev);
       return res.json(events);
     }
 
@@ -96,6 +119,9 @@ exports.getEvents = async (req, res) => {
     let events = await Event.find(filter)
       .populate('organizer', 'name email category')
       .sort(sortObj);
+
+    // Auto-determine status for each event
+    for (const ev of events) await applyAutoStatus(ev);
 
     if (req.query.userInterests) {
       const interests = req.query.userInterests.split(',').map((i) => i.toLowerCase());
@@ -118,6 +144,9 @@ exports.getEventById = async (req, res) => {
       .populate('organizer', 'name email role category')
       .populate('comments.user', 'name');
     if (!event) return res.status(404).json({ msg: 'Event not found' });
+
+    // Auto-determine status based on dates
+    await applyAutoStatus(event);
 
     event.viewCount = (event.viewCount || 0) + 1;
     await event.save();
@@ -344,6 +373,8 @@ exports.getOrganizerEvents = async (req, res) => {
   try {
     const orgId = req.params.organizerId || req.user.id;
     const events = await Event.find({ organizer: orgId }).sort({ createdAt: -1 });
+    // Auto-determine status for each event
+    for (const ev of events) await applyAutoStatus(ev);
     return res.json(events);
   } catch (error) {
     return res.status(500).json({ msg: error.message });
@@ -361,16 +392,27 @@ exports.getEventStats = async (req, res) => {
       return res.status(403).json({ msg: 'Not authorized to view stats for this event' });
     }
 
-    const tickets = await Ticket.find({ event: event._id }).populate('user', 'name email').populate('team', 'name');
+    const tickets = await Ticket.find({ event: event._id }).populate('user', 'name email participantType').populate('team', 'name');
     const confirmed = tickets.filter((t) => t.status === 'Confirmed');
     const attended = tickets.filter((t) => t.attended);
     const revenue = confirmed.reduce((sum, t) => sum + (event.price || 0) * (t.formData?.quantity || 1), 0);
+
+    // Team completion count (teams with status 'Registered')
+    let teamsRegistered = 0;
+    let teamsTotal = 0;
+    if (event.type === 'Hackathon') {
+      const teams = await Team.find({ event: event._id });
+      teamsTotal = teams.length;
+      teamsRegistered = teams.filter(t => t.status === 'Registered').length;
+    }
 
     return res.json({
       totalRegistrations: tickets.length,
       confirmed: confirmed.length,
       attended: attended.length,
       revenue,
+      teamsTotal,
+      teamsRegistered,
       participants: tickets
     });
   } catch (error) {

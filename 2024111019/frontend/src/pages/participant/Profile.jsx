@@ -3,8 +3,9 @@ import axios from 'axios';
 import { AuthContext, API_URL, getAuthHeader } from '../../context/AuthContext';
 
 const INTEREST_OPTIONS = [
-  'Technology', 'Music', 'Art', 'Sports', 'Gaming',
-  'Photography', 'Dance', 'Literature', 'Science', 'Business'
+  'Technical', 'Cultural', 'Sports', 'Music', 'Art',
+  'Literary', 'Gaming', 'Photography', 'Dance', 'Science',
+  'Entrepreneurship', 'Social Service'
 ];
 
 const Profile = () => {

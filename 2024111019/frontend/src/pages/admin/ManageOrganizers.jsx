@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL, getAuthHeader } from '../../context/AuthContext';
 
+const ORGANIZER_CATEGORIES = ['Cultural', 'Technical', 'Sports', 'Literary', 'Music', 'Art', 'Entrepreneurship', 'Social Service', 'Media', 'Other'];
+
 const ManageOrganizers = () => {
   const [organizers, setOrganizers] = useState([]);
   const [form, setForm] = useState({ name: '', email: '', password: '', category: '', description: '', contactNumber: '' });
@@ -51,7 +53,10 @@ const ManageOrganizers = () => {
           <input placeholder="Organizer Name *" value={form.name} onChange={set('name')} required />
           <input placeholder="Email *" type="email" value={form.email} onChange={set('email')} required />
           <input placeholder="Password (auto-generated if empty)" value={form.password} onChange={set('password')} />
-          <input placeholder="Category" value={form.category} onChange={set('category')} />
+          <select value={form.category} onChange={set('category')} style={{ width: '100%' }}>
+            <option value="">Select Category</option>
+            {ORGANIZER_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
           <textarea placeholder="Description" value={form.description} onChange={set('description')} />
           <input placeholder="Contact Number" value={form.contactNumber} onChange={set('contactNumber')} />
           <button className="btn" type="submit">Create Organizer</button>

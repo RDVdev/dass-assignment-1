@@ -11,6 +11,8 @@ const OrgEventDetail = () => {
   const [event, setEvent] = useState(null);
   const [stats, setStats] = useState(null);
   const [search, setSearch] = useState('');
+  const [attendFilter, setAttendFilter] = useState('all');
+  const [institutionFilter, setInstitutionFilter] = useState('all');
   const [editFields, setEditFields] = useState({});
   const [message, setMessage] = useState('');
   const [tab, setTab] = useState('Overview');
@@ -167,10 +169,18 @@ const OrgEventDetail = () => {
 
   if (!event) return <p className="center" style={{ color: 'var(--text-secondary)' }}>Loading...</p>;
 
-  const filteredParticipants = stats?.participants?.filter(p =>
-    !search || p.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.user?.email?.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  const filteredParticipants = stats?.participants?.filter(p => {
+    // Text search
+    if (search && !(p.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.user?.email?.toLowerCase().includes(search.toLowerCase()))) return false;
+    // Attendance filter
+    if (attendFilter === 'attended' && !p.attended) return false;
+    if (attendFilter === 'not-attended' && p.attended) return false;
+    // Institution filter
+    if (institutionFilter === 'IIIT' && p.user?.participantType !== 'IIIT') return false;
+    if (institutionFilter === 'Non-IIIT' && p.user?.participantType !== 'Non-IIIT') return false;
+    return true;
+  }) || [];
 
   const attendedCount = stats?.participants?.filter(t => t.attended).length || 0;
   const totalCount = stats?.participants?.length || 0;
@@ -221,6 +231,12 @@ const OrgEventDetail = () => {
               <div className="card stat-card"><h2>{stats.confirmed}</h2><p>Confirmed</p></div>
               <div className="card stat-card"><h2>{stats.attended}</h2><p>Attended</p></div>
               <div className="card stat-card"><h2>₹{stats.revenue}</h2><p>Revenue</p></div>
+              {event.type === 'Hackathon' && (
+                <>
+                  <div className="card stat-card"><h2>{stats.teamsTotal || 0}</h2><p>Total Teams</p></div>
+                  <div className="card stat-card"><h2>{stats.teamsRegistered || 0}</h2><p>Registered Teams</p></div>
+                </>
+              )}
             </div>
           )}
 
@@ -279,9 +295,21 @@ const OrgEventDetail = () => {
             <div className="card stat-card"><h2>{totalCount > 0 ? Math.round(attendedCount / totalCount * 100) : 0}%</h2><p>Attendance</p></div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <input placeholder="Search by name or email..." value={search}
-              onChange={e => setSearch(e.target.value)} style={{ flex: 1 }} />
+              onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
+            <select value={attendFilter} onChange={e => setAttendFilter(e.target.value)}
+              style={{ width: 'auto', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+              <option value="all">All Attendance</option>
+              <option value="attended">Attended</option>
+              <option value="not-attended">Not Attended</option>
+            </select>
+            <select value={institutionFilter} onChange={e => setInstitutionFilter(e.target.value)}
+              style={{ width: 'auto', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+              <option value="all">All Institutions</option>
+              <option value="IIIT">IIIT</option>
+              <option value="Non-IIIT">Non-IIIT</option>
+            </select>
             <button className="btn btn-small" onClick={exportCSV}>Export CSV</button>
             <button className="btn btn-small btn-outline" onClick={exportAttendanceCSV}>Attendance CSV</button>
           </div>
@@ -290,7 +318,7 @@ const OrgEventDetail = () => {
             <table>
               <thead>
                 <tr>
-                  <th>Name</th><th>Email</th><th>Date</th><th>Status</th><th>Team</th><th>Attended</th><th>Action</th>
+                  <th>Name</th><th>Email</th><th>Institution</th><th>Date</th><th>Status</th><th>Team</th><th>Attended</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -298,6 +326,7 @@ const OrgEventDetail = () => {
                   <tr key={t._id}>
                     <td>{t.user?.name}</td>
                     <td>{t.user?.email}</td>
+                    <td><span className="tag">{t.user?.participantType || '-'}</span></td>
                     <td>{new Date(t.createdAt).toLocaleDateString()}</td>
                     <td><span className={`tag ${t.status === 'Confirmed' ? 'tag-success' : t.status === 'Rejected' ? 'tag-danger' : 'tag-warning'}`}>{t.status}</span></td>
                     <td>{t.team?.name || '-'}</td>
