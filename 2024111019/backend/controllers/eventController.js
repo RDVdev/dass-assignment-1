@@ -250,6 +250,16 @@ exports.registerForEvent = async (req, res) => {
       });
     }
 
+    // Validate required form fields
+    if (event.formFields && event.formFields.length > 0) {
+      const missing = event.formFields
+        .filter(f => f.required)
+        .filter(f => !fd[f.label] && fd[f.label] !== false && fd[f.label] !== 0);
+      if (missing.length > 0) {
+        return res.status(400).json({ msg: `Required fields missing: ${missing.map(f => f.label).join(', ')}` });
+      }
+    }
+
     const ticket = await Ticket.create({
       event: event._id,
       user: req.user.id,

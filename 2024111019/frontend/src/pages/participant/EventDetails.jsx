@@ -69,6 +69,17 @@ const EventDetails = () => {
 
   // --- Actions ---
   const handleRegister = async () => {
+    // Validate required fields before submitting
+    const missing = (event.formFields || []).filter(f => f.required).filter(f => {
+      const val = formData[f.label];
+      if (val === undefined || val === null || val === '') return true;
+      if (f.fieldType === 'checkbox' && val === false) return true;
+      return false;
+    });
+    if (missing.length > 0) {
+      setMessage(`Please fill required fields: ${missing.map(f => f.label).join(', ')}`);
+      return;
+    }
     try {
       const hasFiles = event.formFields?.some(f => f.fieldType === 'file') && Object.values(formData).some(v => v instanceof File);
       let res;
@@ -248,16 +259,16 @@ const EventDetails = () => {
             <div key={i} style={{ marginBottom: '0.5rem' }}>
               <label>{f.label}{f.required ? ' *' : ''}</label>
               {f.fieldType === 'dropdown' ? (
-                <select onChange={e => setFormData({ ...formData, [f.label]: e.target.value })}>
+                <select required={f.required} onChange={e => setFormData({ ...formData, [f.label]: e.target.value })}>
                   <option value="">Select...</option>
                   {(f.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               ) : f.fieldType === 'checkbox' ? (
                 <input type="checkbox" onChange={e => setFormData({ ...formData, [f.label]: e.target.checked })} style={{ width: 'auto' }} />
               ) : f.fieldType === 'file' ? (
-                <input type="file" onChange={e => setFormData({ ...formData, [f.label]: e.target.files[0] })} />
+                <input type="file" required={f.required} onChange={e => setFormData({ ...formData, [f.label]: e.target.files[0] })} />
               ) : (
-                <input type={f.fieldType || 'text'} placeholder={f.label} onChange={e => setFormData({ ...formData, [f.label]: e.target.value })} />
+                <input type={f.fieldType || 'text'} placeholder={f.label} required={f.required} onChange={e => setFormData({ ...formData, [f.label]: e.target.value })} />
               )}
             </div>
           ))}
