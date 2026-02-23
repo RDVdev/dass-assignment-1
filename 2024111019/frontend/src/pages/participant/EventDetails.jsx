@@ -32,10 +32,13 @@ const EventDetails = () => {
     }).catch(() => navigate('/events'));
   }, [id]);
 
-  // Real-time comments via socket
+  // Real-time comments via socket (forceNew to avoid stale cached sockets)
   useEffect(() => {
-    const socket = io(API_URL);
-    socket.emit('joinEvent', id);
+    const socket = io(API_URL, { forceNew: true });
+    // Join room on connect AND every reconnect so room membership survives network blips
+    socket.on('connect', () => {
+      socket.emit('joinEvent', id);
+    });
     socket.on('commentAdded', c => {
       setComments(prev => {
         const cid = c._id || c.id;
@@ -52,6 +55,17 @@ const EventDetails = () => {
       setEvent(prev => prev ? { ...prev, pinnedComments: data.pinnedComments } : prev);
     });
     return () => { socket.emit('leaveEvent', id); socket.disconnect(); };
+  }, [id]);
+
+  // Polling fallback: refresh comments every 3 seconds in case socket misses an update
+  useEffect(() => {
+    const interval = setInterval(() => {
+      axios.get(`${API_URL}/api/events/${id}`).then(r => {
+        setComments(r.data.comments || []);
+        setEvent(prev => prev ? { ...prev, pinnedComments: r.data.pinnedComments } : prev);
+      }).catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
   }, [id]);
 
   if (!event) return <p className="center text-muted">Loading...</p>;
