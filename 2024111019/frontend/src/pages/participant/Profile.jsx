@@ -83,8 +83,8 @@ const Profile = () => {
         <label>College / Organization</label>
         <input value={form.collegeName} onChange={(e) => setForm({ ...form, collegeName: e.target.value })} />
 
-        <p><strong>Email (non-editable):</strong> {profile.email}</p>
-        <p><strong>Participant Type (non-editable):</strong> {profile.participantType}</p>
+        <p><strong>Email :</strong> {profile.email}</p>
+        <p><strong>Participant Type :</strong> {profile.participantType}</p>
 
         <label>Interests</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
