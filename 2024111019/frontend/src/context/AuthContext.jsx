@@ -61,13 +61,6 @@ export const AuthProvider = ({ children }) => {
     return res.data.user;
   };
 
-  const googleLogin = async (credential) => {
-    const res = await axios.post(`${API_URL}/api/auth/google`, { credential });
-    saveAuth(res.data.token, JSON.stringify(res.data.user));
-    setUser(res.data.user);
-    return res.data.user;
-  };
-
   const logout = () => {
     clearAuth();
     setUser(null);
@@ -82,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     } catch { /* silent */ }
   };
 
-  const value = useMemo(() => ({ user, loading, login, register, googleLogin, logout, refreshUser, setUser }), [user, loading]);
+  const value = useMemo(() => ({ user, loading, login, register, logout, refreshUser, setUser }), [user, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

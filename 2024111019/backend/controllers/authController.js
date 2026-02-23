@@ -1,10 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
-
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const signToken = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -300,72 +297,4 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// ============ Google OAuth ============
-exports.googleAuth = async (req, res) => {
-  try {
-    const { credential } = req.body;
-    if (!credential) return res.status(400).json({ msg: 'Google credential is required' });
 
-    if (!process.env.GOOGLE_CLIENT_ID) {
-      return res.status(500).json({ msg: 'Google OAuth not configured on server' });
-    }
-
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, given_name, family_name, picture, email_verified } = payload;
-
-    if (!email_verified) {
-      return res.status(400).json({ msg: 'Google email not verified' });
-    }
-
-    // Check if user already exists (by googleId or email)
-    let user = await User.findOne({ $or: [{ googleId }, { email }] });
-
-    if (user) {
-      // Link Google account if not already linked
-      if (!user.googleId) {
-        user.googleId = googleId;
-        if (picture && !user.avatar) user.avatar = picture;
-        await user.save();
-      }
-    } else {
-      // Create new user
-      user = await User.create({
-        googleId,
-        email,
-        name: `${given_name || ''} ${family_name || ''}`.trim(),
-        firstName: given_name || '',
-        lastName: family_name || '',
-        avatar: picture || '',
-        role: 'participant',
-        participantType: email.endsWith('.iiit.ac.in') ? 'IIIT' : 'Non-IIIT',
-        onboardingComplete: false
-      });
-    }
-
-    if (user.disabled) {
-      return res.status(403).json({ msg: 'Account has been disabled. Contact admin.' });
-    }
-
-    const token = signToken(user);
-    return res.json({
-      token,
-      user: {
-        id: user._id,
-        role: user.role,
-        name: user.name,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        avatar: user.avatar,
-        onboardingComplete: user.onboardingComplete
-      }
-    });
-  } catch (error) {
-    console.error('Google auth error:', error.message);
-    return res.status(401).json({ msg: 'Google authentication failed' });
-  }
-};
