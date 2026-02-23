@@ -5,8 +5,8 @@ export const AuthContext = createContext();
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Use sessionStorage so each tab has its own independent session
-const store = sessionStorage;
+// Use localStorage so login persists across browser sessions
+const store = localStorage;
 
 export const getAuthHeader = () => ({
   headers: { 'x-auth-token': store.getItem('token') }

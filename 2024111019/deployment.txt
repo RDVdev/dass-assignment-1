@@ -1,2 +1,2 @@
-Frontend URL: https://felicity-frontend-v1.vercel.app
-Backend URL: https://felicity-api-production.up.railway.app
+Frontend URL: https://dass-assignment-1-dun.vercel.app/
+Backend URL: https://felicity-api-e94h.onrender.com
