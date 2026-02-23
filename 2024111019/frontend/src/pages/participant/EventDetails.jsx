@@ -23,29 +23,30 @@ const EventDetails = () => {
   const [replyTo, setReplyTo] = useState(null);
   const [newCommentCount, setNewCommentCount] = useState(0);
   const commentsEndRef = useRef(null);
-  const prevCommentCountRef = useRef(0);
+  const [, forceUpdate] = useState(0);
 
-  const fetchEvent = useCallback(() => {
+  const fetchComments = useCallback(() => {
+    axios.get(`${API_URL}/api/events/${id}`).then(r => {
+      const freshComments = r.data.comments || [];
+      setComments(freshComments);
+      setEvent(prev => prev ? { ...prev, pinnedComments: r.data.pinnedComments } : r.data);
+      forceUpdate(n => n + 1);
+    }).catch(() => {});
+  }, [id]);
+
+  // Initial full fetch
+  useEffect(() => {
     axios.get(`${API_URL}/api/events/${id}`).then(r => {
       setEvent(r.data);
-      const fresh = r.data.comments || [];
-      setComments(fresh);
-      // Track new comments arriving from other users
-      if (prevCommentCountRef.current > 0 && fresh.length > prevCommentCountRef.current) {
-        setNewCommentCount(n => n + (fresh.length - prevCommentCountRef.current));
-      }
-      prevCommentCountRef.current = fresh.length;
+      setComments(r.data.comments || []);
     }).catch(() => navigate('/events'));
-  }, [id, navigate]);
+  }, [id]);
 
-  // Initial fetch
-  useEffect(() => { fetchEvent(); }, [fetchEvent]);
-
-  // Poll every 2 seconds for real-time discussion updates
+  // Poll comments every 2 seconds
   useEffect(() => {
-    const interval = setInterval(fetchEvent, 2000);
+    const interval = setInterval(fetchComments, 2000);
     return () => clearInterval(interval);
-  }, [fetchEvent]);
+  }, [fetchComments]);
 
   if (!event) return <p className="center text-muted">Loading...</p>;
 
@@ -111,14 +112,14 @@ const EventDetails = () => {
       await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
       setComment('');
       setReplyTo(null);
-      fetchEvent(); // Immediate refetch so comment appears instantly
+      fetchComments(); // Immediate refetch so comment appears instantly
     } catch { /* */ }
   };
 
   const handleReaction = async (commentId, emoji = '👍') => {
     try {
       await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
-      fetchEvent(); // Immediate refetch so reaction updates instantly
+      fetchComments(); // Immediate refetch so reaction updates instantly
     } catch { /* */ }
   };
 
