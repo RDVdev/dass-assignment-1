@@ -5,11 +5,35 @@ export const AuthContext = createContext();
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Use localStorage so login persists across browser sessions
-const store = localStorage;
+// Hybrid storage: sessionStorage for per-tab isolation, localStorage as persistent backup.
+// On new tab/browser reopen, if sessionStorage is empty we restore from localStorage.
+const saveAuth = (token, user) => {
+  sessionStorage.setItem('token', token);
+  sessionStorage.setItem('user', user);
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', user);
+};
+
+const clearAuth = () => {
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('user');
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+};
+
+const getToken = () => sessionStorage.getItem('token') || localStorage.getItem('token');
+const getUser  = () => sessionStorage.getItem('user')  || localStorage.getItem('user');
+
+// Bootstrap: if sessionStorage is empty (new tab / browser reopened), copy from localStorage
+(() => {
+  if (!sessionStorage.getItem('token') && localStorage.getItem('token')) {
+    sessionStorage.setItem('token', localStorage.getItem('token'));
+    sessionStorage.setItem('user',  localStorage.getItem('user'));
+  }
+})();
 
 export const getAuthHeader = () => ({
-  headers: { 'x-auth-token': store.getItem('token') }
+  headers: { 'x-auth-token': getToken() }
 });
 
 export const AuthProvider = ({ children }) => {
@@ -17,39 +41,35 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = store.getItem('token');
-    const storedUser = store.getItem('user');
+    const token = getToken();
+    const storedUser = getUser();
     if (token && storedUser) setUser(JSON.parse(storedUser));
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
-    store.setItem('token', res.data.token);
-    store.setItem('user', JSON.stringify(res.data.user));
+    saveAuth(res.data.token, JSON.stringify(res.data.user));
     setUser(res.data.user);
     return res.data.user;
   };
 
   const register = async (data) => {
     const res = await axios.post(`${API_URL}/api/auth/register`, data);
-    store.setItem('token', res.data.token);
-    store.setItem('user', JSON.stringify(res.data.user));
+    saveAuth(res.data.token, JSON.stringify(res.data.user));
     setUser(res.data.user);
     return res.data.user;
   };
 
   const googleLogin = async (credential) => {
     const res = await axios.post(`${API_URL}/api/auth/google`, { credential });
-    store.setItem('token', res.data.token);
-    store.setItem('user', JSON.stringify(res.data.user));
+    saveAuth(res.data.token, JSON.stringify(res.data.user));
     setUser(res.data.user);
     return res.data.user;
   };
 
   const logout = () => {
-    store.removeItem('token');
-    store.removeItem('user');
+    clearAuth();
     setUser(null);
   };
 
@@ -57,7 +77,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axios.get(`${API_URL}/api/auth/me`, getAuthHeader());
       const u = { id: res.data._id, role: res.data.role, name: res.data.name, email: res.data.email, onboardingComplete: res.data.onboardingComplete };
-      store.setItem('user', JSON.stringify(u));
+      saveAuth(getToken(), JSON.stringify(u));
       setUser(u);
     } catch { /* silent */ }
   };
