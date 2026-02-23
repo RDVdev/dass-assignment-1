@@ -238,11 +238,23 @@ exports.registerForEvent = async (req, res) => {
     const exists = await Ticket.findOne({ event: event._id, user: req.user.id, status: { $ne: 'Cancelled' } });
     if (exists) return res.status(400).json({ msg: 'Already registered' });
 
+    // Build formData: support both JSON body and multipart uploads
+    let fd = req.body.formData || {};
+    if (typeof fd === 'string') {
+      try { fd = JSON.parse(fd); } catch { fd = {}; }
+    }
+    // Attach uploaded file paths to formData
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(f => {
+        fd[f.fieldname] = `/uploads/${f.filename}`;
+      });
+    }
+
     const ticket = await Ticket.create({
       event: event._id,
       user: req.user.id,
       type: 'Registration',
-      formData: req.body.formData || {},
+      formData: fd,
       status: 'Confirmed'
     });
 

@@ -7,6 +7,7 @@ const {
 } = require('../controllers/eventController');
 const { auth, authorize } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
+const { uploadAny } = require('../middleware/uploadMiddleware');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.post('/', auth, authorize('organizer', 'admin'), createEvent);
 router.put('/:id', auth, authorize('organizer', 'admin'), updateEvent);
 router.delete('/:id', auth, authorize('organizer', 'admin'), deleteEvent);
 
-router.post('/:id/register', auth, authorize('participant'), registerForEvent);
+router.post('/:id/register', auth, authorize('participant'), uploadAny.any(), registerForEvent);
 router.post('/:id/merch-order', auth, authorize('participant'), upload.single('paymentProof'), orderMerchandise);
 router.post('/:id/comments', auth, addComment);
 router.delete('/:id/comments/:commentId', auth, authorize('organizer', 'admin'), deleteComment);

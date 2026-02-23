@@ -1747,11 +1747,43 @@ input[type="number"]::-webkit-outer-spin-button { opacity: 0.5; }
 
 /* Form field card (form builder) */
 .form-field-card {
-  border: 1px solid rgba(124, 58, 237, 0.15);
+  border: 1px solid rgba(124, 58, 237, 0.25);
   border-radius: 8px;
   padding: 0.8rem;
   margin-bottom: 0.5rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Make inputs/selects inside form builder more visible */
+.form-field-card input,
+.form-field-card select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text);
+}
+.form-field-card input:focus,
+.form-field-card select:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--gold);
+}
+.form-field-card input::placeholder {
+  color: var(--text-tertiary);
+}
+.form-field-card button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.form-field-card button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.form-field-card button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* QR camera container */

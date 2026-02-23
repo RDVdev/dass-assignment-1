@@ -70,7 +70,25 @@ const EventDetails = () => {
   // --- Actions ---
   const handleRegister = async () => {
     try {
-      const res = await axios.post(`${API_URL}/api/events/${id}/register`, { formData }, getAuthHeader());
+      const hasFiles = event.formFields?.some(f => f.fieldType === 'file') && Object.values(formData).some(v => v instanceof File);
+      let res;
+      if (hasFiles) {
+        const fd = new FormData();
+        const jsonFields = {};
+        Object.entries(formData).forEach(([key, val]) => {
+          if (val instanceof File) {
+            fd.append(key, val);
+          } else {
+            jsonFields[key] = val;
+          }
+        });
+        fd.append('formData', JSON.stringify(jsonFields));
+        res = await axios.post(`${API_URL}/api/events/${id}/register`, fd, {
+          headers: { 'x-auth-token': sessionStorage.getItem('token'), 'Content-Type': 'multipart/form-data' }
+        });
+      } else {
+        res = await axios.post(`${API_URL}/api/events/${id}/register`, { formData }, getAuthHeader());
+      }
       setMessage(`✓ Registered! Ticket: ${res.data.ticketId}`);
     } catch (err) { setMessage(err.response?.data?.msg || 'Registration failed'); }
   };
@@ -236,6 +254,8 @@ const EventDetails = () => {
                 </select>
               ) : f.fieldType === 'checkbox' ? (
                 <input type="checkbox" onChange={e => setFormData({ ...formData, [f.label]: e.target.checked })} style={{ width: 'auto' }} />
+              ) : f.fieldType === 'file' ? (
+                <input type="file" onChange={e => setFormData({ ...formData, [f.label]: e.target.files[0] })} />
               ) : (
                 <input type={f.fieldType || 'text'} placeholder={f.label} onChange={e => setFormData({ ...formData, [f.label]: e.target.value })} />
               )}

@@ -1,11 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL, getAuthHeader } from '../../context/AuthContext';
 
+const STATUS_TABS = ['All', 'Ongoing', 'Published', 'Draft', 'Completed', 'Closed'];
+const STATUS_COLORS = {
+  Draft: 'var(--text-tertiary)',
+  Published: 'var(--green)',
+  Ongoing: 'var(--gold)',
+  Completed: 'var(--blue)',
+  Closed: 'var(--coral)',
+};
+
 const OrgDashboard = () => {
   const [events, setEvents] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [activeTab, setActiveTab] = useState('All');
 
   useEffect(() => {
     axios.get(`${API_URL}/api/events/organizer/my-events`, getAuthHeader())
@@ -14,6 +24,13 @@ const OrgDashboard = () => {
       .then((r) => setAnalytics(r.data))
       .catch(() => {});
   }, []);
+
+  const filtered = useMemo(() => {
+    if (activeTab === 'All') return events;
+    return events.filter((e) => e.status === activeTab);
+  }, [events, activeTab]);
+
+  const ongoingCount = useMemo(() => events.filter((e) => e.status === 'Ongoing').length, [events]);
 
   return (
     <div className="container">
@@ -38,21 +55,47 @@ const OrgDashboard = () => {
         </div>
       )}
 
-      {/* Events Carousel */}
-      <h2>My Events</h2>
-      <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-        {events.map((e) => (
+      {/* Status Tabs */}
+      <div className="tabs" style={{ marginBottom: '1rem' }}>
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab}
+            className={`tab ${activeTab === tab ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+            type="button"
+          >
+            {tab}
+            {tab === 'Ongoing' && ongoingCount > 0 && (
+              <span className="badge badge-live" style={{ marginLeft: 6, fontSize: '0.7rem' }}>
+                {ongoingCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Events Grid */}
+      <h2>{activeTab === 'All' ? 'My Events' : `${activeTab} Events`}</h2>
+      <div className="grid" style={{ paddingBottom: '0.5rem' }}>
+        {filtered.map((e) => (
           <Link key={e._id} to={`/organizer/events/${e._id}`}
-            className="card" style={{ minWidth: '250px', textDecoration: 'none', color: 'inherit' }}>
+            className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
             <h3>{e.name}</h3>
             <p><strong>Type:</strong> {e.type}</p>
             <p><strong>Status:</strong> <span style={{
-              color: e.status === 'Published' ? 'var(--green)' : e.status === 'Draft' ? 'var(--text-tertiary)' : 'var(--blue)'
-            }}>{e.status}</span></p>
+              color: STATUS_COLORS[e.status] || 'var(--blue)'
+            }}>{e.status}</span>
+            {e.status === 'Ongoing' && <span className="badge badge-live" style={{ marginLeft: 6 }}>● LIVE</span>}
+            </p>
             {e.startDate && <p>{new Date(e.startDate).toLocaleDateString()}</p>}
+            {e.registrationCount > 0 && <p style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>{e.registrationCount} registrations</p>}
           </Link>
         ))}
-        {events.length === 0 && <p>No events yet. Create your first event!</p>}
+        {filtered.length === 0 && (
+          <p style={{ gridColumn: '1/-1' }}>
+            {activeTab === 'All' ? 'No events yet. Create your first event!' : `No ${activeTab.toLowerCase()} events.`}
+          </p>
+        )}
       </div>
     </div>
   );
