@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext, API_URL, getAuthHeader } from '../../context/AuthContext';
@@ -23,30 +23,15 @@ const EventDetails = () => {
   const [replyTo, setReplyTo] = useState(null);
   const [newCommentCount, setNewCommentCount] = useState(0);
   const commentsEndRef = useRef(null);
-  const [, forceUpdate] = useState(0);
 
-  const fetchComments = useCallback(() => {
-    axios.get(`${API_URL}/api/events/${id}`).then(r => {
-      const freshComments = r.data.comments || [];
-      setComments(freshComments);
-      setEvent(prev => prev ? { ...prev, pinnedComments: r.data.pinnedComments } : r.data);
-      forceUpdate(n => n + 1);
-    }).catch(() => {});
-  }, [id]);
-
-  // Initial full fetch
-  useEffect(() => {
+  const fetchEvent = () => {
     axios.get(`${API_URL}/api/events/${id}`).then(r => {
       setEvent(r.data);
       setComments(r.data.comments || []);
     }).catch(() => navigate('/events'));
-  }, [id]);
+  };
 
-  // Poll comments every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchComments, 2000);
-    return () => clearInterval(interval);
-  }, [fetchComments]);
+  useEffect(() => { fetchEvent(); }, [id]);
 
   if (!event) return <p className="center text-muted">Loading...</p>;
 
@@ -112,14 +97,14 @@ const EventDetails = () => {
       await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
       setComment('');
       setReplyTo(null);
-      fetchComments(); // Immediate refetch so comment appears instantly
+      fetchEvent();
     } catch { /* */ }
   };
 
   const handleReaction = async (commentId, emoji = '👍') => {
     try {
       await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
-      fetchComments(); // Immediate refetch so reaction updates instantly
+      fetchEvent();
     } catch { /* */ }
   };
 
