@@ -188,14 +188,14 @@ const EventCreate = () => {
           <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>Add custom fields that participants must fill when registering.</p>
           {formFields.map((f, i) => (
             <div key={i} className="form-field-card">
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => moveField(i, -1)} disabled={i === 0}>↑</button>
                 <button type="button" onClick={() => moveField(i, 1)} disabled={i === formFields.length - 1}>↓</button>
-                <input placeholder="Field label" value={f.label} onChange={e => updateField(i, 'label', e.target.value)} className="flex-1" />
-                <select value={f.type} onChange={e => updateField(i, 'type', e.target.value)}>
+                <input placeholder="Field label" value={f.label} onChange={e => updateField(i, 'label', e.target.value)} className="field-label-input" />
+                <select value={f.type} onChange={e => updateField(i, 'type', e.target.value)} className="field-type-select">
                   {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: '0.8rem' }}>
                   <input type="checkbox" checked={f.required} onChange={e => updateField(i, 'required', e.target.checked)} /> Req
                 </label>
                 <button type="button" onClick={() => removeField(i)} style={{ color: 'red' }}>✕</button>
@@ -204,8 +204,8 @@ const EventCreate = () => {
                 <div style={{ paddingLeft: '2rem' }}>
                   <small>Options:</small>
                   {(f.options || []).map((opt, oi) => (
-                    <div key={oi} style={{ display: 'flex', gap: '0.3rem', marginTop: '0.3rem' }}>
-                      <input value={opt} onChange={e => updateFieldOption(i, oi, e.target.value)} placeholder={`Option ${oi + 1}`} />
+                    <div key={oi} style={{ display: 'flex', gap: '0.3rem', marginTop: '0.3rem', alignItems: 'center' }}>
+                      <input value={opt} onChange={e => updateFieldOption(i, oi, e.target.value)} placeholder={`Option ${oi + 1}`} className="field-option-input" />
                       <button type="button" onClick={() => removeFieldOption(i, oi)} style={{ color: 'red', fontSize: '0.8rem' }}>✕</button>
                     </div>
                   ))}

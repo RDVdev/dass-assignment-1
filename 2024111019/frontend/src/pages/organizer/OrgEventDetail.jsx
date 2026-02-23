@@ -247,7 +247,7 @@ const OrgEventDetail = () => {
 
           <div style={{ overflowX: 'auto' }}>
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Institution</th><th>Date</th><th>Status</th><th>Team</th><th>Attended</th><th>Action</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Institution</th><th>Date</th><th>Status</th><th>Team</th><th>Form Data</th><th>Attended</th><th>Action</th></tr></thead>
               <tbody>
                 {filteredParticipants.map(t => (
                   <tr key={t._id}>
@@ -257,6 +257,18 @@ const OrgEventDetail = () => {
                     <td>{new Date(t.createdAt).toLocaleDateString()}</td>
                     <td><span className={`tag ${t.status === 'Confirmed' ? 'tag-success' : t.status === 'Rejected' ? 'tag-danger' : 'tag-warning'}`}>{t.status}</span></td>
                     <td>{t.team?.name || '-'}</td>
+                    <td style={{ fontSize: '0.8rem', maxWidth: 220 }}>
+                      {t.formData && Object.keys(t.formData).length > 0 ? (
+                        Object.entries(t.formData).map(([k, v]) => (
+                          <div key={k}>
+                            <strong>{k}:</strong>{' '}
+                            {typeof v === 'string' && v.startsWith('/uploads/')
+                              ? <a href={`${API_URL}${v}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)' }}>View File</a>
+                              : String(v)}
+                          </div>
+                        ))
+                      ) : '-'}
+                    </td>
                     <td>{t.attended ? <span style={{ color: 'var(--success)' }}>✓ {t.attendanceTimestamp ? new Date(t.attendanceTimestamp).toLocaleTimeString() : ''}</span> : '-'}</td>
                     <td>{!t.attended && t.status === 'Confirmed' && <button className="btn btn-small btn-outline" onClick={() => manualAttend(t._id)}>Mark</button>}</td>
                   </tr>

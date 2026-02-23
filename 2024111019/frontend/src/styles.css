@@ -1754,20 +1754,40 @@ input[type="number"]::-webkit-outer-spin-button { opacity: 0.5; }
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* Make inputs/selects inside form builder more visible */
-.form-field-card input,
+/* Compact inputs/selects inside form builder */
+.form-field-card input:not([type="checkbox"]),
 .form-field-card select {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  width: auto;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: var(--text);
+  border-radius: var(--radius-sm);
 }
-.form-field-card input:focus,
+.form-field-card input:not([type="checkbox"]):focus,
 .form-field-card select:focus {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.15);
   border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.15);
 }
 .form-field-card input::placeholder {
   color: var(--text-tertiary);
+}
+/* The label input should grow to fill remaining space */
+.form-field-card input.field-label-input {
+  flex: 1;
+  min-width: 120px;
+}
+/* Type dropdown: fixed width */
+.form-field-card select.field-type-select {
+  width: 110px;
+  flex-shrink: 0;
+}
+/* Option sub-inputs */
+.form-field-card .field-option-input {
+  flex: 1;
+  min-width: 100px;
 }
 .form-field-card button {
   background: rgba(255, 255, 255, 0.06);
@@ -1777,6 +1797,8 @@ input[type="number"]::-webkit-outer-spin-button { opacity: 0.5; }
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.85rem;
+  flex-shrink: 0;
+  line-height: 1.2;
 }
 .form-field-card button:hover {
   background: rgba(255, 255, 255, 0.12);
