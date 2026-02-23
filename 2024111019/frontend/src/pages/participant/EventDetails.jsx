@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { AuthContext, API_URL, getAuthHeader } from '../../context/AuthContext';
 
 const EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥'];
@@ -23,15 +24,93 @@ const EventDetails = () => {
   const [replyTo, setReplyTo] = useState(null);
   const [newCommentCount, setNewCommentCount] = useState(0);
   const commentsEndRef = useRef(null);
+  const socketRef = useRef(null);
+  const socketConnected = useRef(false);
 
-  const fetchEvent = () => {
+  // Initial data load
+  useEffect(() => {
     axios.get(`${API_URL}/api/events/${id}`).then(r => {
       setEvent(r.data);
       setComments(r.data.comments || []);
     }).catch(() => navigate('/events'));
-  };
+  }, [id]);
 
-  useEffect(() => { fetchEvent(); }, [id]);
+  // ─── WebSocket for real-time discussion ───
+  useEffect(() => {
+    const socket = io(API_URL, {
+      forceNew: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[Forum] Socket connected:', socket.id);
+      socketConnected.current = true;
+      socket.emit('joinEvent', id);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('[Forum] Socket disconnected:', reason);
+      socketConnected.current = false;
+    });
+
+    socket.on('connect_error', (err) => {
+      console.log('[Forum] Socket error:', err.message);
+      socketConnected.current = false;
+    });
+
+    socket.on('commentAdded', (c) => {
+      console.log('[Forum] New comment received via socket');
+      setComments(prev => {
+        const cid = c._id || c.id;
+        if (prev.some(existing => (existing._id || existing.id) === cid)) return prev;
+        return [...prev, c];
+      });
+      setNewCommentCount(n => n + 1);
+    });
+
+    socket.on('commentDeleted', (cid) => {
+      setComments(prev => prev.filter(c => (c._id || c.id) !== cid));
+    });
+
+    socket.on('reactionUpdated', (data) => {
+      setComments(prev => prev.map(c =>
+        (c._id || c.id) === data.commentId ? { ...c, reactions: data.reactions } : c
+      ));
+    });
+
+    socket.on('commentPinned', (data) => {
+      setEvent(prev => prev ? { ...prev, pinnedComments: data.pinnedComments } : prev);
+    });
+
+    return () => {
+      console.log('[Forum] Cleaning up socket');
+      socket.emit('leaveEvent', id);
+      socket.disconnect();
+      socketRef.current = null;
+      socketConnected.current = false;
+    };
+  }, [id]);
+
+  // ─── Polling fallback: if socket is down, poll every 3s ───
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!socketConnected.current) {
+        console.log('[Forum] Socket down — polling for comments');
+        axios.get(`${API_URL}/api/events/${id}`).then(r => {
+          setComments(r.data.comments || []);
+          if (r.data.pinnedComments) {
+            setEvent(prev => prev ? { ...prev, pinnedComments: r.data.pinnedComments } : prev);
+          }
+        }).catch(() => {});
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [id]);
 
   if (!event) return <p className="center text-muted">Loading...</p>;
 
@@ -94,17 +173,19 @@ const EventDetails = () => {
     try {
       const body = { text: comment };
       if (replyTo) body.parentComment = replyTo;
+      // POST to server — server saves to DB and broadcasts via Socket.IO to all clients in the room
       await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
       setComment('');
       setReplyTo(null);
-      fetchEvent();
+      // The socket 'commentAdded' event from server will update comments for all tabs including this one
     } catch { /* */ }
   };
 
   const handleReaction = async (commentId, emoji = '👍') => {
     try {
+      // POST to server — server saves and broadcasts 'reactionUpdated' via Socket.IO
       await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
-      fetchEvent();
+      // Socket 'reactionUpdated' event from server will update reactions for all tabs
     } catch { /* */ }
   };
 
