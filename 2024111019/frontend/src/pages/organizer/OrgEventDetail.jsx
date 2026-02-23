@@ -23,10 +23,17 @@ const OrgEventDetail = () => {
   const [scanning, setScanning] = useState(false);
   const scannerRef = useRef(null);
   const [merchOrders, setMerchOrders] = useState([]);
+  const [forumMessages, setForumMessages] = useState([]);
 
   const set = (field) => (e) => setEditFields({ ...editFields, [field]: e.target.value });
 
-  useEffect(() => { fetchData(); }, [id]);
+  useEffect(() => { fetchData(); loadForumMessages(); }, [id]);
+
+  const loadForumMessages = () => {
+    axios.get(`${API_URL}/api/forum/${id}/messages`, getAuthHeader())
+      .then(r => setForumMessages(r.data.messages || []))
+      .catch(() => {});
+  };
 
   const fetchData = async () => {
     const [evRes, stRes] = await Promise.all([
@@ -119,12 +126,12 @@ const OrgEventDetail = () => {
     try { await axios.put(`${API_URL}/api/admin/merch-orders/${ticketId}`, { action }, getAuthHeader()); setMessage(`Order ${action}d`); fetchData(); }
     catch (err) { setMessage(err.response?.data?.msg || 'Failed'); }
   };
-  const deleteComment = async (cid) => {
-    try { await axios.delete(`${API_URL}/api/events/${id}/comments/${cid}`, getAuthHeader()); setMessage('Comment deleted'); fetchData(); }
+  const deleteComment = async (msgId) => {
+    try { await axios.delete(`${API_URL}/api/forum/${id}/messages/${msgId}`, getAuthHeader()); setMessage('Message deleted'); loadForumMessages(); }
     catch (err) { setMessage(err.response?.data?.msg || 'Failed'); }
   };
-  const pinComment = async (cid) => {
-    try { await axios.put(`${API_URL}/api/events/${id}/comments/${cid}/pin`, {}, getAuthHeader()); setMessage('Pin toggled'); fetchData(); }
+  const pinComment = async (msgId) => {
+    try { await axios.put(`${API_URL}/api/forum/${id}/messages/${msgId}/pin`, {}, getAuthHeader()); setMessage('Pin toggled'); loadForumMessages(); }
     catch (err) { setMessage(err.response?.data?.msg || 'Failed'); }
   };
 
@@ -333,22 +340,22 @@ const OrgEventDetail = () => {
       {tab === 'Comments' && (
         <div>
           <h2>Discussion Moderation</h2>
-          <p style={{ marginBottom: '1rem' }}>Pin important comments, delete inappropriate ones.</p>
-          {(!event.comments || event.comments.length === 0) && <p>No comments yet.</p>}
-          {(event.comments || []).map(c => (
-            <div key={c._id} className="card comment-mod-card" style={{ borderLeft: event.pinnedComments?.includes(c._id) ? '3px solid var(--accent)' : undefined }}>
+          <p style={{ marginBottom: '1rem' }}>Pin important messages, delete inappropriate ones.</p>
+          {forumMessages.length === 0 && <p>No messages yet.</p>}
+          {forumMessages.map(m => (
+            <div key={m._id} className="card comment-mod-card" style={{ borderLeft: m.pinned ? '3px solid var(--accent)' : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 <div>
-                  {event.pinnedComments?.includes(c._id) && <span className="tag tag-warning" style={{ marginBottom: '0.3rem', display: 'inline-block' }}>Pinned</span>}
-                  <p style={{ fontWeight: 600, color: 'var(--accent-light)', fontSize: '0.85rem' }}>{c.user?.name || 'User'}</p>
-                  <p style={{ fontSize: '0.9rem', marginTop: '0.2rem' }}>{c.text}</p>
-                  <small className="text-muted">{c.timestamp ? new Date(c.timestamp).toLocaleString() : ''}</small>
+                  {m.pinned && <span className="tag tag-warning" style={{ marginBottom: '0.3rem', display: 'inline-block' }}>Pinned</span>}
+                  <p style={{ fontWeight: 600, color: 'var(--accent-light)', fontSize: '0.85rem' }}>{m.userName || 'User'}</p>
+                  <p style={{ fontSize: '0.9rem', marginTop: '0.2rem' }}>{m.text}</p>
+                  <small className="text-muted">{m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}</small>
                 </div>
                 <div className="inline" style={{ gap: '0.3rem', flexShrink: 0 }}>
-                  <button className="btn btn-small btn-outline" onClick={() => pinComment(c._id)}>
-                    {event.pinnedComments?.includes(c._id) ? 'Unpin' : 'Pin'}
+                  <button className="btn btn-small btn-outline" onClick={() => pinComment(m._id)}>
+                    {m.pinned ? 'Unpin' : 'Pin'}
                   </button>
-                  <button className="btn btn-small btn-danger" onClick={() => deleteComment(c._id)}>Delete</button>
+                  <button className="btn btn-small btn-danger" onClick={() => deleteComment(m._id)}>Delete</button>
                 </div>
               </div>
             </div>

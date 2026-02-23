@@ -20,22 +20,32 @@ const EventDetails = () => {
   const [paymentFile, setPaymentFile] = useState(null);
   const [message, setMessage] = useState('');
   const [comment, setComment] = useState('');
-  const [comments, setComments] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
-  const [newCommentCount, setNewCommentCount] = useState(0);
-  const commentsEndRef = useRef(null);
+  const [newMsgCount, setNewMsgCount] = useState(0);
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
-  const socketConnected = useRef(false);
 
-  // Initial data load
+  // ─── Load event data ───
   useEffect(() => {
     axios.get(`${API_URL}/api/events/${id}`).then(r => {
       setEvent(r.data);
-      setComments(r.data.comments || []);
     }).catch(() => navigate('/events'));
   }, [id]);
 
-  // ─── WebSocket for real-time discussion ───
+  // ─── Load forum messages from dedicated endpoint ───
+  const loadMessages = () => {
+    axios.get(`${API_URL}/api/forum/${id}/messages`, getAuthHeader()).then(r => {
+      setMessages(r.data.messages || []);
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (user) loadMessages();
+  }, [id, user]);
+
+  // ─── Socket.IO for real-time forum (modeled after working reference) ───
   useEffect(() => {
     const socket = io(API_URL, {
       forceNew: true,
@@ -49,67 +59,52 @@ const EventDetails = () => {
 
     socket.on('connect', () => {
       console.log('[Forum] Socket connected:', socket.id);
-      socketConnected.current = true;
-      socket.emit('joinEvent', id);
+      socket.emit('joinEventForum', id);
     });
 
     socket.on('disconnect', (reason) => {
       console.log('[Forum] Socket disconnected:', reason);
-      socketConnected.current = false;
     });
 
     socket.on('connect_error', (err) => {
       console.log('[Forum] Socket error:', err.message);
-      socketConnected.current = false;
     });
 
-    socket.on('commentAdded', (c) => {
-      console.log('[Forum] New comment received via socket');
-      setComments(prev => {
-        const cid = c._id || c.id;
-        if (prev.some(existing => (existing._id || existing.id) === cid)) return prev;
-        return [...prev, c];
+    // Real-time: new message from any user
+    socket.on('newMessage', (msg) => {
+      console.log('[Forum] New message received:', msg.userName);
+      setMessages(prev => {
+        if (prev.some(m => m._id === msg._id)) return prev; // dedup
+        return [...prev, msg];
       });
-      setNewCommentCount(n => n + 1);
+      setNewMsgCount(n => n + 1);
     });
 
-    socket.on('commentDeleted', (cid) => {
-      setComments(prev => prev.filter(c => (c._id || c.id) !== cid));
+    // Real-time: message deleted by organizer
+    socket.on('messageDeleted', (msgId) => {
+      setMessages(prev => prev.filter(m => m._id !== msgId));
     });
 
+    // Real-time: reaction toggled
     socket.on('reactionUpdated', (data) => {
-      setComments(prev => prev.map(c =>
-        (c._id || c.id) === data.commentId ? { ...c, reactions: data.reactions } : c
+      setMessages(prev => prev.map(m =>
+        m._id === data.messageId ? { ...m, reactions: data.reactions } : m
       ));
     });
 
-    socket.on('commentPinned', (data) => {
-      setEvent(prev => prev ? { ...prev, pinnedComments: data.pinnedComments } : prev);
+    // Real-time: message pinned/unpinned
+    socket.on('messagePinned', (data) => {
+      setMessages(prev => prev.map(m =>
+        m._id === data.messageId ? { ...m, pinned: data.pinned } : m
+      ));
     });
 
     return () => {
       console.log('[Forum] Cleaning up socket');
-      socket.emit('leaveEvent', id);
+      socket.emit('leaveEventForum', id);
       socket.disconnect();
       socketRef.current = null;
-      socketConnected.current = false;
     };
-  }, [id]);
-
-  // ─── Polling fallback: if socket is down, poll every 3s ───
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!socketConnected.current) {
-        console.log('[Forum] Socket down — polling for comments');
-        axios.get(`${API_URL}/api/events/${id}`).then(r => {
-          setComments(r.data.comments || []);
-          if (r.data.pinnedComments) {
-            setEvent(prev => prev ? { ...prev, pinnedComments: r.data.pinnedComments } : prev);
-          }
-        }).catch(() => {});
-      }
-    }, 3000);
-    return () => clearInterval(interval);
   }, [id]);
 
   if (!event) return <p className="center text-muted">Loading...</p>;
@@ -169,23 +164,23 @@ const EventDetails = () => {
   };
 
   const handleComment = async () => {
-    if (!comment.trim()) return;
+    if (!comment.trim() || sending) return;
+    setSending(true);
     try {
-      const body = { text: comment };
-      if (replyTo) body.parentComment = replyTo;
-      // POST to server — server saves to DB and broadcasts via Socket.IO to all clients in the room
-      await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
+      const body = { text: comment.trim() };
+      if (replyTo) body.parentMessage = replyTo;
+      await axios.post(`${API_URL}/api/forum/${id}/messages`, body, getAuthHeader());
       setComment('');
       setReplyTo(null);
-      // The socket 'commentAdded' event from server will update comments for all tabs including this one
+      // Socket 'newMessage' event from server will add it for all clients
     } catch { /* */ }
+    setSending(false);
   };
 
-  const handleReaction = async (commentId, emoji = '👍') => {
+  const handleReaction = async (messageId, emoji = '👍') => {
     try {
-      // POST to server — server saves and broadcasts 'reactionUpdated' via Socket.IO
-      await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
-      // Socket 'reactionUpdated' event from server will update reactions for all tabs
+      await axios.post(`${API_URL}/api/forum/${id}/messages/${messageId}/react`, { emoji }, getAuthHeader());
+      // Socket 'reactionUpdated' event from server will update for all clients
     } catch { /* */ }
   };
 
@@ -203,13 +198,13 @@ const EventDetails = () => {
   };
 
   // --- Render helpers ---
-  const renderReactions = (c, isReply = false) => (
+  const renderReactions = (m, isReply = false) => (
     <div className="reaction-bar">
       {EMOJIS.map(emoji => {
-        const count = (c.reactions || []).filter(r => r.emoji === emoji).length;
-        const mine = user && (c.reactions || []).some(r => r.emoji === emoji && (r.user === user.id || r.user?._id === user.id));
+        const count = (m.reactions || []).filter(r => r.emoji === emoji).length;
+        const mine = user && (m.reactions || []).some(r => r.emoji === emoji && (r.user === user.id || r.user?._id === user.id));
         return (count > 0 || (user && !isReply)) ? (
-          <button key={emoji} onClick={() => user && handleReaction(c._id || c.id, emoji)}
+          <button key={emoji} onClick={() => user && handleReaction(m._id, emoji)}
             className={`reaction-btn ${mine ? 'reaction-mine' : ''}`}
             style={{ opacity: count > 0 ? 1 : 0.4 }}>
             {emoji}{count > 0 ? ` ${count}` : ''}
@@ -217,7 +212,7 @@ const EventDetails = () => {
         ) : null;
       })}
       {user && !isReply && (
-        <button onClick={() => setReplyTo(c._id || c.id)} className="btn-reply">↩ Reply</button>
+        <button onClick={() => setReplyTo(m._id)} className="btn-reply">↩ Reply</button>
       )}
     </div>
   );
@@ -329,27 +324,30 @@ const EventDetails = () => {
       <div className="section" style={{ marginTop: '1.5rem' }}>
         <div className="inline" style={{ gap: '0.5rem' }}>
           <h2>Discussion</h2>
-          {newCommentCount > 0 && (
-            <span onClick={() => { setNewCommentCount(0); commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+          {newMsgCount > 0 && (
+            <span onClick={() => { setNewMsgCount(0); messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
               className="badge badge-live" style={{ cursor: 'pointer' }}>
-              {newCommentCount}
+              {newMsgCount}
             </span>
           )}
         </div>
         <div style={{ maxHeight: 500, overflowY: 'auto', marginBottom: '0.8rem' }}>
-          {comments.length === 0 && <p style={{ fontSize: '0.9rem' }}>No comments yet. Start the discussion!</p>}
+          {messages.length === 0 && <p style={{ fontSize: '0.9rem' }}>No messages yet. Start the discussion!</p>}
 
-          {comments.filter(c => !c.parentComment).map((c, i) => {
-            const replies = comments.filter(r => r.parentComment && (r.parentComment === c._id || r.parentComment === (c._id || c.id)));
+          {messages.filter(m => !m.parentMessage).map((m, i) => {
+            const replies = messages.filter(r => r.parentMessage && (r.parentMessage === m._id));
             return (
-              <div key={c._id || i} style={{ marginBottom: '0.6rem' }}>
-                <div className="card" style={{ padding: '0.8rem', borderLeft: event.pinnedComments?.includes(c._id) ? '3px solid var(--accent)' : undefined }}>
+              <div key={m._id || i} style={{ marginBottom: '0.6rem' }}>
+                <div className="card" style={{ padding: '0.8rem', borderLeft: m.pinned ? '3px solid var(--accent)' : undefined }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>{c.user?.name || 'User'}</strong>
-                    <small className="text-muted">{c.timestamp ? new Date(c.timestamp).toLocaleString() : ''}</small>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <strong style={{ color: 'var(--accent-light)', fontSize: '0.85rem' }}>{m.userName || 'User'}</strong>
+                      {m.userRole === 'organizer' && <span className="tag" style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}>Organizer</span>}
+                    </div>
+                    <small className="text-muted">{m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}</small>
                   </div>
-                  <p style={{ fontSize: '0.9rem', marginTop: '0.2rem' }}>{c.text}</p>
-                  {renderReactions(c)}
+                  <p style={{ fontSize: '0.9rem', marginTop: '0.2rem' }}>{m.text}</p>
+                  {renderReactions(m)}
                 </div>
 
                 {/* Threaded replies */}
@@ -358,8 +356,8 @@ const EventDetails = () => {
                     {replies.map((r, ri) => (
                       <div key={r._id || ri} className="card" style={{ padding: '0.6rem', marginTop: '0.3rem', marginBottom: '0.3rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <strong style={{ color: 'var(--accent-light)', fontSize: '0.8rem' }}>{r.user?.name || 'User'}</strong>
-                          <small className="text-muted" style={{ fontSize: '0.7rem' }}>{r.timestamp ? new Date(r.timestamp).toLocaleString() : ''}</small>
+                          <strong style={{ color: 'var(--accent-light)', fontSize: '0.8rem' }}>{r.userName || 'User'}</strong>
+                          <small className="text-muted" style={{ fontSize: '0.7rem' }}>{r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</small>
                         </div>
                         <p style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>{r.text}</p>
                         {renderReactions(r, true)}
@@ -370,22 +368,24 @@ const EventDetails = () => {
               </div>
             );
           })}
-          <div ref={commentsEndRef} />
+          <div ref={messagesEndRef} />
         </div>
 
         {user && (
           <div>
             {replyTo && (
               <div className="inline" style={{ gap: '0.5rem', marginBottom: '0.3rem', fontSize: '0.85rem', color: 'var(--accent-light)' }}>
-                <span>↩ Replying to comment</span>
+                <span>↩ Replying to message</span>
                 <button onClick={() => setReplyTo(null)} className="btn-reply" style={{ color: 'var(--danger)' }}>✕ Cancel</button>
               </div>
             )}
             <div className="inline" style={{ gap: '0.5rem' }}>
               <input value={comment} onChange={e => setComment(e.target.value)}
                 placeholder={replyTo ? 'Write a reply...' : 'Type a message...'}
-                style={{ flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleComment()} />
-              <button className="btn" onClick={handleComment}>Send</button>
+                style={{ flex: 1 }} onKeyDown={e => e.key === 'Enter' && handleComment()} disabled={sending} />
+              <button className="btn" onClick={handleComment} disabled={sending || !comment.trim()}>
+                {sending ? '...' : 'Send'}
+              </button>
             </div>
           </div>
         )}

@@ -37,39 +37,29 @@ app.set('io', io);
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/forum', require('./routes/forumRoutes'));
 
-// Socket.io for real-time discussion
-const onlineUsers = new Map(); // socketId -> { userId, userName }
-
+// Socket.io for real-time discussion forum
 io.on('connection', (socket) => {
-  // ---------- Event Discussion ----------
+  // Forum room management (using event_ prefix like the dedicated forum system)
+  socket.on('joinEventForum', (eventId) => {
+    socket.join(`event_${eventId}`);
+  });
+
+  socket.on('leaveEventForum', (eventId) => {
+    socket.leave(`event_${eventId}`);
+  });
+
+  // Legacy room handlers (kept for backwards compatibility)
   socket.on('joinEvent', (eventId) => {
-    socket.join(`event-${eventId}`);
+    socket.join(`event_${eventId}`);
   });
 
   socket.on('leaveEvent', (eventId) => {
-    socket.leave(`event-${eventId}`);
+    socket.leave(`event_${eventId}`);
   });
 
-  socket.on('newComment', (data) => {
-    io.to(`event-${data.eventId}`).emit('commentAdded', data.comment);
-  });
-
-  socket.on('deleteComment', (data) => {
-    io.to(`event-${data.eventId}`).emit('commentDeleted', data.commentId);
-  });
-
-  socket.on('pinComment', (data) => {
-    io.to(`event-${data.eventId}`).emit('commentPinned', data);
-  });
-
-  socket.on('reactionToggled', (data) => {
-    io.to(`event-${data.eventId}`).emit('reactionUpdated', data);
-  });
-
-  socket.on('disconnect', () => {
-    onlineUsers.delete(socket.id);
-  });
+  socket.on('disconnect', () => {});
 });
 
 const PORT = process.env.PORT || 5000;
