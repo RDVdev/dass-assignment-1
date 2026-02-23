@@ -34,10 +34,8 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/teams', require('./routes/teamRoutes'));
-app.use('/api/chat', require('./routes/chatRoutes'));
 
-// Socket.io for real-time discussion + team chat
+// Socket.io for real-time discussion
 const onlineUsers = new Map(); // socketId -> { userId, userName }
 
 io.on('connection', (socket) => {
@@ -66,40 +64,7 @@ io.on('connection', (socket) => {
     io.to(`event-${data.eventId}`).emit('reactionUpdated', data);
   });
 
-  // ---------- Team Chat ----------
-  socket.on('joinTeam', ({ teamId, userId, userName }) => {
-    socket.join(`team-${teamId}`);
-    onlineUsers.set(socket.id, { userId, userName, teamId });
-    const teamMembers = [...onlineUsers.values()].filter(u => u.teamId === teamId);
-    io.to(`team-${teamId}`).emit('onlineMembers', teamMembers.map(u => ({ userId: u.userId, userName: u.userName })));
-  });
-
-  socket.on('leaveTeam', (teamId) => {
-    socket.leave(`team-${teamId}`);
-    onlineUsers.delete(socket.id);
-    const teamMembers = [...onlineUsers.values()].filter(u => u.teamId === teamId);
-    io.to(`team-${teamId}`).emit('onlineMembers', teamMembers.map(u => ({ userId: u.userId, userName: u.userName })));
-  });
-
-  socket.on('teamMessage', (data) => {
-    io.to(`team-${data.teamId}`).emit('newTeamMessage', data.message);
-  });
-
-  socket.on('typing', ({ teamId, userName }) => {
-    socket.to(`team-${teamId}`).emit('userTyping', { userName });
-  });
-
-  socket.on('stopTyping', ({ teamId }) => {
-    socket.to(`team-${teamId}`).emit('userStoppedTyping');
-  });
-
   socket.on('disconnect', () => {
-    const userData = onlineUsers.get(socket.id);
-    if (userData?.teamId) {
-      onlineUsers.delete(socket.id);
-      const teamMembers = [...onlineUsers.values()].filter(u => u.teamId === userData.teamId);
-      io.to(`team-${userData.teamId}`).emit('onlineMembers', teamMembers.map(u => ({ userId: u.userId, userName: u.userName })));
-    }
     onlineUsers.delete(socket.id);
   });
 });

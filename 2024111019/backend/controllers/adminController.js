@@ -2,8 +2,6 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
-const Team = require('../models/Team');
-const Message = require('../models/Message');
 const QRCode = require('qrcode');
 
 exports.getOrganizers = async (_req, res) => {
@@ -73,12 +71,6 @@ exports.deleteOrganizer = async (req, res) => {
     // Cascade delete: remove all associated data
     const events = await Event.find({ organizer: organizer._id });
     const eventIds = events.map(e => e._id);
-
-    // Delete all teams for these events and their messages
-    const teams = await Team.find({ event: { $in: eventIds } });
-    const teamIds = teams.map(t => t._id);
-    await Message.deleteMany({ team: { $in: teamIds } });
-    await Team.deleteMany({ event: { $in: eventIds } });
 
     // Delete all tickets for these events
     await Ticket.deleteMany({ event: { $in: eventIds } });

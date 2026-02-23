@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const User = require('./models/User');
 const Ticket = require('./models/Ticket');
-const Team = require('./models/Team');
 const bcrypt = require('bcryptjs');
 
 mongoose.connect(process.env.MONGO_URI).then(async () => {
@@ -21,7 +20,6 @@ mongoose.connect(process.env.MONGO_URI).then(async () => {
   const ids = users.map(u => u._id);
   if (ids.length) {
     await Ticket.deleteMany({ user: { $in: ids } });
-    await Team.deleteMany({ leader: { $in: ids } });
   }
   const result = await User.deleteMany({ email: { $in: emails } });
   console.log('Deleted test users:', result.deletedCount);

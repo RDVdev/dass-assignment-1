@@ -58,7 +58,6 @@ const Dashboard = () => {
             <th>Type</th>
             <th>Organizer</th>
             <th>Status</th>
-            <th>Team</th>
             <th>Ticket ID</th>
             <th>QR</th>
           </tr>
@@ -72,7 +71,6 @@ const Dashboard = () => {
               <td>{ticket.type}</td>
               <td>{ticket.event?.organizer?.name || '-'}</td>
               <td>{ticket.status}</td>
-              <td>{ticket.team?.name || '-'}</td>
               <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{ticket.ticketId || '-'}</td>
               <td>
                 {ticket.qrCode && (

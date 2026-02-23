@@ -1,6 +1,5 @@
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
-const Team = require('../models/Team');
 const User = require('../models/User');
 const QRCode = require('qrcode');
 const nodemailer = require('nodemailer');
@@ -341,7 +340,6 @@ exports.myTickets = async (req, res) => {
   try {
     const tickets = await Ticket.find({ user: req.user.id })
       .populate({ path: 'event', populate: { path: 'organizer', select: 'name' } })
-      .populate('team', 'name')
       .sort({ createdAt: -1 });
     return res.json(tickets);
   } catch (error) {
@@ -422,27 +420,16 @@ exports.getEventStats = async (req, res) => {
       return res.status(403).json({ msg: 'Not authorized to view stats for this event' });
     }
 
-    const tickets = await Ticket.find({ event: event._id }).populate('user', 'name email participantType').populate('team', 'name');
+    const tickets = await Ticket.find({ event: event._id }).populate('user', 'name email participantType');
     const confirmed = tickets.filter((t) => t.status === 'Confirmed');
     const attended = tickets.filter((t) => t.attended);
     const revenue = confirmed.reduce((sum, t) => sum + (event.price || 0) * (t.formData?.quantity || 1), 0);
-
-    // Team completion count (teams with status 'Registered')
-    let teamsRegistered = 0;
-    let teamsTotal = 0;
-    if (event.type === 'Hackathon') {
-      const teams = await Team.find({ event: event._id });
-      teamsTotal = teams.length;
-      teamsRegistered = teams.filter(t => t.status === 'Registered').length;
-    }
 
     return res.json({
       totalRegistrations: tickets.length,
       confirmed: confirmed.length,
       attended: attended.length,
       revenue,
-      teamsTotal,
-      teamsRegistered,
       participants: tickets
     });
   } catch (error) {
@@ -462,12 +449,11 @@ exports.exportParticipants = async (req, res) => {
     }
 
     const tickets = await Ticket.find({ event: req.params.id })
-      .populate('user', 'name email')
-      .populate('team', 'name');
+      .populate('user', 'name email');
 
-    const header = 'Name,Email,Registration Date,Status,Team,Attended\n';
+    const header = 'Name,Email,Registration Date,Status,Attended\n';
     const rows = tickets.map((t) =>
-      `${t.user?.name},${t.user?.email},${t.createdAt.toISOString()},${t.status},${t.team?.name || ''},${t.attended}`
+      `${t.user?.name},${t.user?.email},${t.createdAt.toISOString()},${t.status},${t.attended}`
     ).join('\n');
 
     res.setHeader('Content-Type', 'text/csv');

@@ -3,10 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { AuthContext, API_URL, getAuthHeader } from '../../context/AuthContext';
-import TeamChat from '../../components/TeamChat';
 
 const EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥'];
-const TYPE_COLOR = { Hackathon: 'var(--teal)', Merchandise: 'var(--amber)', Normal: 'var(--blue)' };
+const TYPE_COLOR = { Merchandise: 'var(--amber)', Normal: 'var(--blue)' };
 const STATUS_COLOR = { Published: 'var(--success)', Draft: 'var(--text-muted)', Ongoing: 'var(--accent-light)', Completed: 'var(--warning)', Closed: 'var(--danger)' };
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD';
 
@@ -27,9 +26,6 @@ const EventDetails = () => {
   const [feedback, setFeedback] = useState({ rating: 0, comment: '' });
   const [fbData, setFbData] = useState(null);
   const [fbFilter, setFbFilter] = useState(0);
-  const [teams, setTeams] = useState([]);
-  const [teamName, setTeamName] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const socketRef = useRef(null);
   const commentsEndRef = useRef(null);
 
@@ -39,11 +35,6 @@ const EventDetails = () => {
       setComments(r.data.comments || []);
     }).catch(() => navigate('/events'));
     axios.get(`${API_URL}/api/events/${id}/feedback`).then(r => setFbData(r.data)).catch(() => {});
-    if (user) {
-      axios.get(`${API_URL}/api/teams/mine`, getAuthHeader()).then(r => {
-        setTeams(r.data.filter(t => t.event?._id === id || t.event === id));
-      }).catch(() => {});
-    }
   }, [id]);
 
   // Real-time comments via socket
@@ -148,31 +139,6 @@ const EventDetails = () => {
     } catch (err) { setMessage(err.response?.data?.msg || 'Feedback failed'); }
   };
 
-  const createTeam = async () => {
-    try {
-      const res = await axios.post(`${API_URL}/api/teams`, { name: teamName, eventId: id }, getAuthHeader());
-      setTeams([...teams, res.data]);
-      setTeamName('');
-      setMessage(`✓ Team created! Code: ${res.data.inviteCode}`);
-    } catch (err) { setMessage(err.response?.data?.msg || 'Failed'); }
-  };
-
-  const joinTeam = async () => {
-    try {
-      const res = await axios.post(`${API_URL}/api/teams/join`, { inviteCode }, getAuthHeader());
-      setTeams([...teams, res.data]);
-      setInviteCode('');
-      setMessage('✓ Joined team!');
-    } catch (err) { setMessage(err.response?.data?.msg || 'Failed'); }
-  };
-
-  const registerTeam = async (teamId) => {
-    try {
-      await axios.post(`${API_URL}/api/teams/${teamId}/register`, {}, getAuthHeader());
-      setMessage('✓ Team registered! Tickets generated for all members.');
-    } catch (err) { setMessage(err.response?.data?.msg || 'Failed'); }
-  };
-
   // --- Calendar helpers ---
   const openGoogleCal = () => {
     const start = event.startDate ? new Date(event.startDate).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') : '';
@@ -275,38 +241,6 @@ const EventDetails = () => {
           <button className="btn" onClick={handleRegister} disabled={!canRegister}>
             {!canRegister ? (deadlinePassed ? 'Deadline Passed' : limitReached ? 'Limit Reached' : 'Closed') : 'Register Now'}
           </button>
-        </div>
-      )}
-
-      {/* Hackathon Teams */}
-      {user?.role === 'participant' && event.type === 'Hackathon' && (
-        <div className="section">
-          <h2>Team Registration</h2>
-          {teams.length > 0 ? teams.map(team => (
-            <div key={team._id} className="card" style={{ marginBottom: '0.8rem' }}>
-              <h3>{team.name}</h3>
-              <p className="mono" style={{ color: 'var(--accent-light)' }}>Invite Code: {team.inviteCode}</p>
-              <p>Members: {team.members?.length || 1} / {team.maxMembers}</p>
-              <p>Status: <span style={{ color: team.status === 'Registered' ? 'var(--success)' : team.status === 'Complete' ? 'var(--warning)' : 'var(--text-secondary)' }}>{team.status}</span></p>
-              <div className="tag-list">
-                {team.members?.map(m => <span key={m._id || m} className="tag">{m.name || m.email || m}</span>)}
-              </div>
-              {team.leader?._id === user?.id && team.status !== 'Registered' && team.members?.length >= (event.minTeamSize || 2) && (
-                <button className="btn" style={{ marginTop: '0.5rem' }} onClick={() => registerTeam(team._id)}>Register Team</button>
-              )}
-              <TeamChat teamId={team._id} teamName={team.name} />
-            </div>
-          )) : (
-            <p style={{ marginBottom: '1rem' }}>Create a team or join with an invite code.</p>
-          )}
-          <div className="inline" style={{ gap: '0.5rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
-            <input placeholder="Team name" value={teamName} onChange={e => setTeamName(e.target.value)} style={{ flex: 1 }} />
-            <button className="btn" onClick={createTeam} disabled={!teamName}>Create Team</button>
-          </div>
-          <div className="inline" style={{ gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-            <input placeholder="Invite code" value={inviteCode} onChange={e => setInviteCode(e.target.value)} style={{ flex: 1 }} />
-            <button className="btn btn-outline" onClick={joinTeam} disabled={!inviteCode}>Join Team</button>
-          </div>
         </div>
       )}
 

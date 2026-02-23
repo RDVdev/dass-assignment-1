@@ -15,13 +15,12 @@ const ticketSchema = new mongoose.Schema(
       enum: ['Confirmed', 'Pending Approval', 'Rejected', 'Cancelled'],
       default: 'Confirmed'
     },
-    team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
     attended: { type: Boolean, default: false },
     attendanceTimestamp: Date
   },
   { timestamps: true }
 );
 
-ticketSchema.index({ event: 1, user: 1 }, { unique: true, partialFilterExpression: { team: { $exists: false } } });
+ticketSchema.index({ event: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

@@ -26,10 +26,6 @@ const EventCreate = () => {
   const [purchaseLimitPerUser, setPurchaseLimitPerUser] = useState('');
   const [variants, setVariants] = useState([]);
 
-  // Hackathon-specific
-  const [minTeamSize, setMinTeamSize] = useState('2');
-  const [maxTeamSize, setMaxTeamSize] = useState('4');
-
   // Custom form fields (form builder)
   const [formFields, setFormFields] = useState([]);
 
@@ -88,10 +84,6 @@ const EventCreate = () => {
       body.purchaseLimitPerUser = purchaseLimitPerUser ? Number(purchaseLimitPerUser) : undefined;
       body.variants = variants.filter(v => v.name).map(v => ({ ...v, stock: Number(v.stock) || 0 }));
     }
-    if (type === 'Hackathon') {
-      body.minTeamSize = Number(minTeamSize) || 2;
-      body.maxTeamSize = Number(maxTeamSize) || 4;
-    }
     try {
       const res = await axios.post(`${API_URL}/api/events`, body, getAuthHeader());
       setMessage('Event created! Redirecting...');
@@ -118,7 +110,6 @@ const EventCreate = () => {
               <select value={type} onChange={e => setType(e.target.value)} style={{ width: '100%' }}>
                 <option value="Normal">Normal</option>
                 <option value="Merchandise">Merchandise</option>
-                <option value="Hackathon">Hackathon</option>
               </select>
             </div>
             <div className="flex-1">
@@ -168,17 +159,6 @@ const EventCreate = () => {
               </div>
             ))}
             <button type="button" onClick={addVariant} className="btn" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem' }}>+ Add Variant</button>
-          </div>
-        )}
-
-        {/* Hackathon section */}
-        {type === 'Hackathon' && (
-          <div className="form-section">
-            <h3>Hackathon Team Settings</h3>
-            <div className="form-row">
-              <div className="flex-1"><label>Min Team Size</label><input type="number" min="1" value={minTeamSize} onChange={e => setMinTeamSize(e.target.value)} style={{ width: '100%' }} /></div>
-              <div className="flex-1"><label>Max Team Size</label><input type="number" min="1" value={maxTeamSize} onChange={e => setMaxTeamSize(e.target.value)} style={{ width: '100%' }} /></div>
-            </div>
           </div>
         )}
 

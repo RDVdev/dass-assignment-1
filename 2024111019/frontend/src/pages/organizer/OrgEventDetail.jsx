@@ -5,7 +5,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { API_URL, getAuthHeader } from '../../context/AuthContext';
 
 const ALL_TABS = ['Overview', 'Participants', 'QR Scanner', 'Comments', 'Merch Orders'];
-const TYPE_COLOR = { Hackathon: 'var(--teal)', Merchandise: 'var(--amber)', Normal: 'var(--blue)' };
+const TYPE_COLOR = { Merchandise: 'var(--amber)', Normal: 'var(--blue)' };
 const STATUS_COLOR = { Published: 'var(--success)', Draft: 'var(--text-muted)', Ongoing: 'var(--accent-light)', Completed: 'var(--warning)', Closed: 'var(--danger)' };
 const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
@@ -182,10 +182,6 @@ const OrgEventDetail = () => {
               <div className="card stat-card"><h2>{stats.confirmed}</h2><p>Confirmed</p></div>
               <div className="card stat-card"><h2>{stats.attended}</h2><p>Attended</p></div>
               <div className="card stat-card"><h2>₹{stats.revenue}</h2><p>Revenue</p></div>
-              {event.type === 'Hackathon' && <>
-                <div className="card stat-card"><h2>{stats.teamsTotal || 0}</h2><p>Total Teams</p></div>
-                <div className="card stat-card"><h2>{stats.teamsRegistered || 0}</h2><p>Registered Teams</p></div>
-              </>}
             </div>
           )}
 
@@ -247,7 +243,7 @@ const OrgEventDetail = () => {
 
           <div style={{ overflowX: 'auto' }}>
             <table>
-              <thead><tr><th>Name</th><th>Email</th><th>Institution</th><th>Date</th><th>Status</th><th>Team</th><th>Form Data</th><th>Attended</th><th>Action</th></tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Institution</th><th>Date</th><th>Status</th><th>Form Data</th><th>Attended</th><th>Action</th></tr></thead>
               <tbody>
                 {filteredParticipants.map(t => (
                   <tr key={t._id}>
@@ -256,7 +252,6 @@ const OrgEventDetail = () => {
                     <td><span className="tag">{t.user?.participantType || '-'}</span></td>
                     <td>{new Date(t.createdAt).toLocaleDateString()}</td>
                     <td><span className={`tag ${t.status === 'Confirmed' ? 'tag-success' : t.status === 'Rejected' ? 'tag-danger' : 'tag-warning'}`}>{t.status}</span></td>
-                    <td>{t.team?.name || '-'}</td>
                     <td style={{ fontSize: '0.8rem', maxWidth: 220 }}>
                       {t.formData && Object.keys(t.formData).length > 0 ? (
                         Object.entries(t.formData).map(([k, v]) => (

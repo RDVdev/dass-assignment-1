@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext, API_URL, getAuthHeader } from '../../context/AuthContext';
 
-const typeColor = { Normal: 'var(--blue)', Merchandise: 'var(--amber)', Hackathon: 'var(--teal)' };
-const typeBg = { Normal: 'rgba(96,165,250,0.12)', Merchandise: 'rgba(245,158,11,0.12)', Hackathon: 'rgba(78,205,196,0.12)' };
+const typeColor = { Normal: 'var(--blue)', Merchandise: 'var(--amber)' };
+const typeBg = { Normal: 'rgba(96,165,250,0.12)', Merchandise: 'rgba(245,158,11,0.12)' };
 const statusTag = { Published: 'tag-success', Completed: 'tag-blue', Draft: 'tag-warning', Cancelled: 'tag-danger' };
 
 const BrowseEvents = () => {
@@ -49,7 +49,7 @@ const BrowseEvents = () => {
         <h1>
           Discover <span className="gradient-text">Amazing</span> Events
         </h1>
-        <p>Workshops, hackathons, merch drops, and more — all from IIIT Hyderabad's finest clubs.</p>
+        <p>Workshops, merch drops, and more — all from IIIT Hyderabad's finest clubs.</p>
       </div>
 
       <div className="container" style={{ paddingTop: 0 }}>
@@ -68,7 +68,7 @@ const BrowseEvents = () => {
         <div className="filter-bar" style={{ justifyContent: 'center', marginBottom: 32 }}>
           <select className="pill-select" value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value })}>
             <option value="">All Types</option>
-            {['Normal', 'Merchandise', 'Hackathon'].map(t => <option key={t}>{t}</option>)}
+            {['Normal', 'Merchandise'].map(t => <option key={t}>{t}</option>)}
           </select>
           <select className="pill-select" value={filters.eligibility} onChange={e => setFilters({ ...filters, eligibility: e.target.value })}>
             <option value="">All Eligibility</option>

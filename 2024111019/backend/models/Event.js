@@ -6,7 +6,7 @@ const eventSchema = new mongoose.Schema(
     description: String,
     type: {
       type: String,
-      enum: ['Normal', 'Merchandise', 'Hackathon'],
+      enum: ['Normal', 'Merchandise'],
       required: true
     },
     organizer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -57,8 +57,6 @@ const eventSchema = new mongoose.Schema(
       }
     ],
     viewCount: { type: Number, default: 0 },
-    minTeamSize: { type: Number, default: 2 },
-    maxTeamSize: { type: Number, default: 4 },
     feedback: [
       {
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

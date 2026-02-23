@@ -14,7 +14,6 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const User = require('./models/User');
 const Event = require('./models/Event');
 const Ticket = require('./models/Ticket');
-const Team = require('./models/Team');
 
 const PASS = 'Pass@123';
 
@@ -89,8 +88,7 @@ const pick = (arr, n) => shuffle([...arr]).slice(0, n);
       await Promise.all([
         User.deleteMany({ role: { $ne: 'admin' } }),
         Event.deleteMany({}),
-        Ticket.deleteMany({}),
-        Team.deleteMany({})
+        Ticket.deleteMany({})
       ]);
       console.log('Cleaned existing data.');
     }
@@ -159,10 +157,9 @@ const pick = (arr, n) => shuffle([...arr]).slice(0, n);
       },
       {
         name: 'HackIIIT 2026', description: 'The flagship 36-hour hackathon of IIIT Hyderabad. Build innovative solutions across AI, Web3, FinTech, and HealthTech tracks. ₹2L+ in prizes!',
-        type: 'Hackathon', organizer: orgDocs[1]._id, status: 'Published',
+        type: 'Normal', organizer: orgDocs[1]._id, status: 'Published',
         eligibility: 'All', startDate: d(21), endDate: d(22), regDeadline: d(18),
-        limit: 200, price: 0, tags: ['hackathon', 'coding', 'AI', 'prizes'],
-        minTeamSize: 2, maxTeamSize: 4
+        limit: 200, price: 0, tags: ['hackathon', 'coding', 'AI', 'prizes']
       },
       {
         name: 'Felicity Merch Store', description: 'Official Felicity 2026 merchandise — hoodies, t-shirts, caps, and stickers. Premium quality, limited stock!',
@@ -224,10 +221,9 @@ const pick = (arr, n) => shuffle([...arr]).slice(0, n);
       },
       {
         name: 'CodeWars: CTF Championship', description: 'Capture The Flag cybersecurity competition. Solve challenges in web exploitation, cryptography, reverse engineering, and forensics.',
-        type: 'Hackathon', organizer: orgDocs[1]._id, status: 'Published',
+        type: 'Normal', organizer: orgDocs[1]._id, status: 'Published',
         eligibility: 'All', startDate: d(35), endDate: d(36), regDeadline: d(32),
-        limit: 150, price: 0, tags: ['CTF', 'cybersecurity', 'hacking', 'forensics'],
-        minTeamSize: 2, maxTeamSize: 3
+        limit: 150, price: 0, tags: ['CTF', 'cybersecurity', 'hacking', 'forensics']
       },
       {
         name: 'Photography Walk: Old City', description: 'Explore the streets of Hyderabad\'s Old City with your camera. Guided tour covering Charminar, Laad Bazaar, and hidden gems. All skill levels welcome.',
@@ -256,7 +252,6 @@ const pick = (arr, n) => shuffle([...arr]).slice(0, n);
     let totalTickets = 0;
 
     for (const event of eventDocs) {
-      if (event.type === 'Hackathon') continue; // Handle separately
       if (event.type === 'Merchandise') continue; // Handle separately
 
       const numReg = Math.min(event.limit || 50, 50);
@@ -285,50 +280,6 @@ const pick = (arr, n) => shuffle([...arr]).slice(0, n);
       event.registrationCount = numReg;
       event.viewCount = Math.floor(Math.random() * 500) + 100;
       if (!event.formLocked) event.formLocked = true;
-      await event.save();
-    }
-
-    // Hackathon teams
-    console.log('\nCreating hackathon teams...');
-    for (const event of eventDocs.filter(e => e.type === 'Hackathon')) {
-      const teamCount = 15;
-      const available = shuffle([...partDocs]);
-      let idx = 0;
-
-      for (let t = 0; t < teamCount; t++) {
-        const teamSize = Math.floor(Math.random() * (event.maxTeamSize - event.minTeamSize + 1)) + event.minTeamSize;
-        if (idx + teamSize > available.length) break;
-
-        const members = available.slice(idx, idx + teamSize);
-        idx += teamSize;
-
-        const team = await Team.create({
-          name: `Team ${['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Theta', 'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi'][t]}`,
-          event: event._id,
-          leader: members[0]._id,
-          members: members.map(m => m._id),
-          maxMembers: event.maxTeamSize,
-          inviteCode: Math.random().toString(36).slice(2, 8).toUpperCase(),
-          status: 'Registered'
-        });
-
-        for (const member of members) {
-          const ticket = await Ticket.create({
-            event: event._id,
-            user: member._id,
-            type: 'Registration',
-            team: team._id,
-            status: 'Confirmed'
-          });
-          const qrData = JSON.stringify({ ticketId: ticket.ticketId, event: event.name, team: team.name });
-          ticket.qrCode = await QRCode.toDataURL(qrData);
-          await ticket.save();
-          totalTickets++;
-        }
-      }
-
-      event.registrationCount = idx;
-      event.viewCount = Math.floor(Math.random() * 800) + 200;
       await event.save();
     }
 
