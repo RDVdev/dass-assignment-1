@@ -3,6 +3,15 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { AuthContext, API_URL, getAuthHeader } from '../context/AuthContext';
 
+const linkify = (text) => {
+  const urlRe = /(https?:\/\/[^\s]+)/g;
+  return text.split(urlRe).map((part, i) =>
+    urlRe.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-light)' }}>{part}</a>
+      : part
+  );
+};
+
 const TeamChat = ({ teamId, teamName }) => {
   const { user } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
@@ -16,36 +25,25 @@ const TeamChat = ({ teamId, teamName }) => {
 
   useEffect(() => {
     if (!expanded) return;
-    // Fetch message history
+
     axios.get(`${API_URL}/api/chat/${teamId}/messages`, getAuthHeader())
       .then(r => setMessages(r.data.messages || []))
       .catch(() => {});
 
-    // Connect socket
     const socket = io(API_URL);
     socketRef.current = socket;
     socket.emit('joinTeam', { teamId, userId: user?.id, userName: user?.name });
 
-    socket.on('newTeamMessage', (msg) => {
-      setMessages(prev => [...prev, msg]);
-    });
-
-    socket.on('onlineMembers', (members) => {
-      setOnlineMembers(members);
-    });
-
+    socket.on('newTeamMessage', msg => setMessages(prev => [...prev, msg]));
+    socket.on('onlineMembers', setOnlineMembers);
     socket.on('userTyping', ({ userName }) => {
       setTypingUser(userName);
       clearTimeout(typingTimeout.current);
       typingTimeout.current = setTimeout(() => setTypingUser(''), 2000);
     });
-
     socket.on('userStoppedTyping', () => setTypingUser(''));
 
-    return () => {
-      socket.emit('leaveTeam', teamId);
-      socket.disconnect();
-    };
+    return () => { socket.emit('leaveTeam', teamId); socket.disconnect(); };
   }, [teamId, expanded]);
 
   useEffect(() => {
@@ -67,25 +65,13 @@ const TeamChat = ({ teamId, teamName }) => {
     setText(e.target.value);
     socketRef.current?.emit('typing', { teamId, userName: user?.name });
     clearTimeout(typingTimeout.current);
-    typingTimeout.current = setTimeout(() => {
-      socketRef.current?.emit('stopTyping', { teamId });
-    }, 1500);
-  };
-
-  // Detect URLs in text and render as links
-  const renderText = (t) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = t.split(urlRegex);
-    return parts.map((part, i) => urlRegex.test(part)
-      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-light)' }}>{part}</a>
-      : part
-    );
+    typingTimeout.current = setTimeout(() => socketRef.current?.emit('stopTyping', { teamId }), 1500);
   };
 
   if (!expanded) {
     return (
       <button className="btn btn-outline" onClick={() => setExpanded(true)} style={{ marginTop: '0.5rem' }}>
-        💬 Open Team Chat
+        Open Team Chat
       </button>
     );
   }
@@ -93,40 +79,36 @@ const TeamChat = ({ teamId, teamName }) => {
   return (
     <div className="card" style={{ marginTop: '0.8rem', padding: 0, overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '0.6rem 1rem', background: 'var(--surface-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="chat-header">
         <div>
-          <strong style={{ color: 'var(--accent-light)' }}>💬 {teamName || 'Team Chat'}</strong>
-          <span style={{ marginLeft: '0.8rem', fontSize: '0.8rem', color: 'var(--success)' }}>
-            🟢 {onlineMembers.length} online
-          </span>
+          <strong style={{ color: 'var(--accent-light)' }}>{teamName || 'Team Chat'}</strong>
+          <span className="chat-online-count">{onlineMembers.length} online</span>
         </div>
-        <button onClick={() => setExpanded(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem' }}>✕</button>
+        <button onClick={() => setExpanded(false)} className="chat-close-btn">&times;</button>
       </div>
 
-      {/* Online members */}
+      {/* Online Members */}
       {onlineMembers.length > 0 && (
-        <div style={{ padding: '0.3rem 1rem', background: 'var(--surface-1)', display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+        <div className="chat-online-bar">
           {onlineMembers.map(m => (
-            <span key={m.userId} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              🟢 {m.userName}
-            </span>
+            <span key={m.userId} className="chat-online-member">{m.userName}</span>
           ))}
         </div>
       )}
 
       {/* Messages */}
       <div style={{ height: 300, overflowY: 'auto', padding: '0.8rem' }}>
-        {messages.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>No messages yet. Say hello! 👋</p>}
+        {messages.length === 0 && <p className="text-muted" style={{ textAlign: 'center', fontSize: '0.85rem' }}>No messages yet. Say hello!</p>}
         {messages.map((msg, i) => {
           const isMe = msg.sender?._id === user?.id || msg.sender === user?.id;
           return (
             <div key={msg._id || i} style={{ marginBottom: '0.5rem', textAlign: isMe ? 'right' : 'left' }}>
-              <div style={{ display: 'inline-block', maxWidth: '80%', padding: '0.5rem 0.8rem',
-                borderRadius: '12px', background: isMe ? 'var(--accent)' : 'var(--surface-2)',
-                color: isMe ? '#fff' : 'var(--text-primary)' }}>
-                {!isMe && <p style={{ fontSize: '0.7rem', fontWeight: 600, color: isMe ? '#fff' : 'var(--accent-light)', marginBottom: '0.1rem' }}>{msg.sender?.name || 'User'}</p>}
-                <p style={{ fontSize: '0.9rem', margin: 0, wordBreak: 'break-word' }}>{renderText(msg.text)}</p>
-                <small style={{ fontSize: '0.65rem', opacity: 0.7 }}>{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
+              <div className={`chat-bubble ${isMe ? 'chat-bubble-mine' : 'chat-bubble-other'}`}>
+                {!isMe && <p className="chat-sender">{msg.sender?.name || 'User'}</p>}
+                <p style={{ fontSize: '0.9rem', margin: 0, wordBreak: 'break-word' }}>{linkify(msg.text)}</p>
+                <small style={{ fontSize: '0.65rem', opacity: 0.7 }}>
+                  {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                </small>
               </div>
             </div>
           );
@@ -135,14 +117,10 @@ const TeamChat = ({ teamId, teamName }) => {
       </div>
 
       {/* Typing indicator */}
-      {typingUser && (
-        <div style={{ padding: '0.2rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          {typingUser} is typing...
-        </div>
-      )}
+      {typingUser && <div className="chat-typing">{typingUser} is typing...</div>}
 
       {/* Input */}
-      <div style={{ display: 'flex', gap: '0.4rem', padding: '0.5rem', borderTop: '1px solid var(--border)' }}>
+      <div className="chat-input-bar">
         <input value={text} onChange={handleTyping} placeholder="Type a message..."
           style={{ flex: 1, fontSize: '0.9rem' }}
           onKeyDown={e => e.key === 'Enter' && sendMessage()} />

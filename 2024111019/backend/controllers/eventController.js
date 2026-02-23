@@ -94,8 +94,16 @@ exports.getEvents = async (req, res) => {
     }
 
     if (req.query.search) {
-      const regex = new RegExp(req.query.search, 'i');
-      filter.$or = [{ name: regex }, { description: regex }, { tags: regex }];
+      const term = req.query.search;
+      const regex = new RegExp(term, 'i');
+      // Build a fuzzy regex: allow one character to be missing/different between each pair
+      // e.g. "workshp" → "w.?o.?r.?k.?s.?h.?p" which matches "workshop"
+      const fuzzyPattern = term.split('').map(c => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.?');
+      const fuzzyRegex = new RegExp(fuzzyPattern, 'i');
+      filter.$or = [
+        { name: regex }, { description: regex }, { tags: regex },
+        { name: fuzzyRegex }, { description: fuzzyRegex }, { tags: fuzzyRegex }
+      ];
     }
 
     if (req.query.followedClubs) {

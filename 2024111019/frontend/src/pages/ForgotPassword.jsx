@@ -3,6 +3,15 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../context/AuthContext';
 
+const validatePw = (pw) => {
+  if (pw.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(pw)) return 'Must include an uppercase letter';
+  if (!/[a-z]/.test(pw)) return 'Must include a lowercase letter';
+  if (!/[0-9]/.test(pw)) return 'Must include a number';
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw)) return 'Must include a special character';
+  return '';
+};
+
 const ForgotPassword = () => {
   const [step, setStep] = useState(1);            // 1 = enter email, 2 = enter token + new pw
   const [email, setEmail] = useState('');
@@ -31,7 +40,8 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError(''); setMsg('');
     if (password !== confirm) { setError('Passwords do not match.'); return; }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    const pwCheck = validatePw(password);
+    if (pwCheck) { setError(pwCheck); return; }
     setLoading(true);
     try {
       const res = await axios.post(`${API_URL}/api/auth/reset-password`, { token, newPassword: password });

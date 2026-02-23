@@ -9,6 +9,15 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const signToken = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+const validatePassword = (pw) => {
+  if (!pw || pw.length < 8) return 'Password must be at least 8 characters';
+  if (!/[A-Z]/.test(pw)) return 'Password must include an uppercase letter';
+  if (!/[a-z]/.test(pw)) return 'Password must include a lowercase letter';
+  if (!/[0-9]/.test(pw)) return 'Password must include a number';
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw)) return 'Password must include a special character';
+  return '';
+};
+
 exports.register = async (req, res) => {
   try {
     const { firstName, lastName, email, password, isIIIT, collegeName, contactNumber } = req.body;
@@ -17,6 +26,9 @@ exports.register = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ msg: 'Name, email and password are required' });
     }
+
+    const pwErr = validatePassword(password);
+    if (pwErr) return res.status(400).json({ msg: pwErr });
 
     if (isIIIT && !email.endsWith('.iiit.ac.in')) {
       return res.status(400).json({ msg: 'Must use IIIT email' });
@@ -148,6 +160,9 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ msg: 'Current password is incorrect' });
     }
 
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) return res.status(400).json({ msg: pwErr });
+
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
     return res.json({ msg: 'Password changed successfully' });
@@ -229,26 +244,30 @@ exports.forgotPassword = async (req, res) => {
 
     // Try to send email
     if (process.env.SMTP_USER) {
-      const nodemailer = require('nodemailer');
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT) || 587,
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      });
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-      await transporter.sendMail({
-        from: process.env.SMTP_USER,
-        to: email,
-        subject: 'Password Reset - Felicity',
-        html: `<h2>Password Reset Request</h2>
-          <p>Click the link below to reset your password. This link expires in 15 minutes.</p>
-          <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#0071e3;color:white;border-radius:8px;text-decoration:none">Reset Password</a>
-          <p>Or use this token: <strong>${resetToken}</strong></p>`
-      });
-      return res.json({ msg: 'Password reset email sent. Check your inbox.' });
+      try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp.gmail.com',
+          port: Number(process.env.SMTP_PORT) || 587,
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+        const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+        await transporter.sendMail({
+          from: process.env.SMTP_USER,
+          to: email,
+          subject: 'Password Reset - Felicity',
+          html: `<h2>Password Reset Request</h2>
+            <p>Click the link below to reset your password. This link expires in 15 minutes.</p>
+            <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#0071e3;color:white;border-radius:8px;text-decoration:none">Reset Password</a>
+            <p>Or use this token: <strong>${resetToken}</strong></p>`
+        });
+        return res.json({ msg: 'Password reset email sent. Check your inbox.' });
+      } catch (emailErr) {
+        console.error('Email send failed, returning token directly:', emailErr.message);
+      }
     }
 
-    // No SMTP configured - return token directly (for development)
+    // No SMTP configured or email failed - return token directly (for development)
     return res.json({ msg: 'Reset token generated', resetToken, expiresIn: '15 minutes' });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
@@ -259,7 +278,8 @@ exports.resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) return res.status(400).json({ msg: 'Token and new password are required' });
-    if (newPassword.length < 6) return res.status(400).json({ msg: 'Password must be at least 6 characters' });
+    const pwErr = validatePassword(newPassword);
+    if (pwErr) return res.status(400).json({ msg: pwErr });
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({

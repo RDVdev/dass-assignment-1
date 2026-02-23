@@ -101,21 +101,19 @@ const EventCreate = () => {
     }
   };
 
-  const sectionStyle = { border: '1px solid rgba(124,58,237,0.2)', borderRadius: 12, padding: '1.2rem', marginBottom: '1.2rem', background: 'rgba(255,255,255,0.03)' };
-
   return (
     <div className="container" style={{ maxWidth: 800, margin: 'auto' }}>
       <h1>Create Event</h1>
       <form onSubmit={onSubmit}>
         {/* Basic Info */}
-        <div style={sectionStyle}>
+        <div className="form-section">
           <h3>Basic Information</h3>
           <label>Name *</label>
           <input value={name} onChange={e => setName(e.target.value)} required style={{ width: '100%' }} />
           <label>Description</label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} style={{ width: '100%' }} />
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1 }}>
+          <div className="form-row">
+            <div className="flex-1">
               <label>Type</label>
               <select value={type} onChange={e => setType(e.target.value)} style={{ width: '100%' }}>
                 <option value="Normal">Normal</option>
@@ -123,7 +121,7 @@ const EventCreate = () => {
                 <option value="Hackathon">Hackathon</option>
               </select>
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="flex-1">
               <label>Eligibility</label>
               <select value={eligibility} onChange={e => setEligibility(e.target.value)} style={{ width: '100%' }}>
                 <option value="All">All</option>
@@ -135,29 +133,29 @@ const EventCreate = () => {
         </div>
 
         {/* Dates & Limits */}
-        <div style={sectionStyle}>
+        <div className="form-section">
           <h3>Dates & Limits</h3>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1 }}><label>Start Date</label><input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%' }} /></div>
-            <div style={{ flex: 1 }}><label>End Date</label><input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%' }} /></div>
+          <div className="form-row">
+            <div className="flex-1"><label>Start Date</label><input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ width: '100%' }} /></div>
+            <div className="flex-1"><label>End Date</label><input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ width: '100%' }} /></div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-            <div style={{ flex: 1 }}><label>Registration Deadline</label><input type="datetime-local" value={registrationDeadline} onChange={e => setRegistrationDeadline(e.target.value)} style={{ width: '100%' }} /></div>
-            <div style={{ flex: 1 }}><label>Participant Limit</label><input type="number" value={limit} onChange={e => setLimit(e.target.value)} placeholder="No limit" style={{ width: '100%' }} /></div>
+          <div className="form-row" style={{ marginTop: '0.5rem' }}>
+            <div className="flex-1"><label>Registration Deadline</label><input type="datetime-local" value={registrationDeadline} onChange={e => setRegistrationDeadline(e.target.value)} style={{ width: '100%' }} /></div>
+            <div className="flex-1"><label>Participant Limit</label><input type="number" value={limit} onChange={e => setLimit(e.target.value)} placeholder="No limit" style={{ width: '100%' }} /></div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-            <div style={{ flex: 1 }}><label>Price (₹)</label><input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0 = Free" style={{ width: '100%' }} /></div>
-            <div style={{ flex: 1 }}><label>Tags (comma-separated)</label><input value={tags} onChange={e => setTags(e.target.value)} placeholder="tech, music, sports" style={{ width: '100%' }} /></div>
+          <div className="form-row" style={{ marginTop: '0.5rem' }}>
+            <div className="flex-1"><label>Price (₹)</label><input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0 = Free" style={{ width: '100%' }} /></div>
+            <div className="flex-1"><label>Tags (comma-separated)</label><input value={tags} onChange={e => setTags(e.target.value)} placeholder="tech, music, sports" style={{ width: '100%' }} /></div>
           </div>
         </div>
 
         {/* Merchandise section */}
         {type === 'Merchandise' && (
-          <div style={sectionStyle}>
+          <div className="form-section">
             <h3>Merchandise Details</h3>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1 }}><label>Total Stock</label><input type="number" value={stock} onChange={e => setStock(e.target.value)} style={{ width: '100%' }} /></div>
-              <div style={{ flex: 1 }}><label>Purchase Limit Per User</label><input type="number" value={purchaseLimitPerUser} onChange={e => setPurchaseLimitPerUser(e.target.value)} style={{ width: '100%' }} /></div>
+            <div className="form-row">
+              <div className="flex-1"><label>Total Stock</label><input type="number" value={stock} onChange={e => setStock(e.target.value)} style={{ width: '100%' }} /></div>
+              <div className="flex-1"><label>Purchase Limit Per User</label><input type="number" value={purchaseLimitPerUser} onChange={e => setPurchaseLimitPerUser(e.target.value)} style={{ width: '100%' }} /></div>
             </div>
             <h4 style={{ marginTop: '1rem' }}>Variants</h4>
             {variants.map((v, i) => (
@@ -175,25 +173,25 @@ const EventCreate = () => {
 
         {/* Hackathon section */}
         {type === 'Hackathon' && (
-          <div style={sectionStyle}>
+          <div className="form-section">
             <h3>Hackathon Team Settings</h3>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1 }}><label>Min Team Size</label><input type="number" min="1" value={minTeamSize} onChange={e => setMinTeamSize(e.target.value)} style={{ width: '100%' }} /></div>
-              <div style={{ flex: 1 }}><label>Max Team Size</label><input type="number" min="1" value={maxTeamSize} onChange={e => setMaxTeamSize(e.target.value)} style={{ width: '100%' }} /></div>
+            <div className="form-row">
+              <div className="flex-1"><label>Min Team Size</label><input type="number" min="1" value={minTeamSize} onChange={e => setMinTeamSize(e.target.value)} style={{ width: '100%' }} /></div>
+              <div className="flex-1"><label>Max Team Size</label><input type="number" min="1" value={maxTeamSize} onChange={e => setMaxTeamSize(e.target.value)} style={{ width: '100%' }} /></div>
             </div>
           </div>
         )}
 
         {/* Form Builder */}
-        <div style={sectionStyle}>
+        <div className="form-section">
           <h3>Registration Form Builder</h3>
           <p style={{ fontSize: '0.85rem', opacity: 0.6 }}>Add custom fields that participants must fill when registering.</p>
           {formFields.map((f, i) => (
-            <div key={i} style={{ border: '1px solid rgba(124,58,237,0.15)', borderRadius: 8, padding: '0.8rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.02)' }}>
+            <div key={i} className="form-field-card">
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <button type="button" onClick={() => moveField(i, -1)} disabled={i === 0}>↑</button>
                 <button type="button" onClick={() => moveField(i, 1)} disabled={i === formFields.length - 1}>↓</button>
-                <input placeholder="Field label" value={f.label} onChange={e => updateField(i, 'label', e.target.value)} style={{ flex: 1 }} />
+                <input placeholder="Field label" value={f.label} onChange={e => updateField(i, 'label', e.target.value)} className="flex-1" />
                 <select value={f.type} onChange={e => updateField(i, 'type', e.target.value)}>
                   {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>

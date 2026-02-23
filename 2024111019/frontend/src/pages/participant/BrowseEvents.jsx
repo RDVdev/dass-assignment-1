@@ -65,25 +65,21 @@ const BrowseEvents = () => {
         </div>
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, justifyContent: 'center' }}>
-          <select value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value })} style={{ width: 'auto', flex: 'none', padding: '8px 14px', borderRadius: '100px', fontSize: '0.8125rem' }}>
+        <div className="filter-bar" style={{ justifyContent: 'center', marginBottom: 32 }}>
+          <select className="pill-select" value={filters.type} onChange={e => setFilters({ ...filters, type: e.target.value })}>
             <option value="">All Types</option>
-            <option value="Normal">Normal</option>
-            <option value="Merchandise">Merchandise</option>
-            <option value="Hackathon">Hackathon</option>
+            {['Normal', 'Merchandise', 'Hackathon'].map(t => <option key={t}>{t}</option>)}
           </select>
-          <select value={filters.eligibility} onChange={e => setFilters({ ...filters, eligibility: e.target.value })} style={{ width: 'auto', flex: 'none', padding: '8px 14px', borderRadius: '100px', fontSize: '0.8125rem' }}>
+          <select className="pill-select" value={filters.eligibility} onChange={e => setFilters({ ...filters, eligibility: e.target.value })}>
             <option value="">All Eligibility</option>
             <option value="All">Everyone</option>
             <option value="IIIT">IIIT Only</option>
             <option value="Non-IIIT">Non-IIIT Only</option>
           </select>
-          <input type="date" value={filters.dateFrom} onChange={e => setFilters({ ...filters, dateFrom: e.target.value })}
-            style={{ width: 'auto', flex: 'none', padding: '8px 14px', borderRadius: '100px', fontSize: '0.8125rem' }} title="From" />
-          <input type="date" value={filters.dateTo} onChange={e => setFilters({ ...filters, dateTo: e.target.value })}
-            style={{ width: 'auto', flex: 'none', padding: '8px 14px', borderRadius: '100px', fontSize: '0.8125rem' }} title="To" />
+          <input type="date" className="pill-select" value={filters.dateFrom} onChange={e => setFilters({ ...filters, dateFrom: e.target.value })} title="From" />
+          <input type="date" className="pill-select" value={filters.dateTo} onChange={e => setFilters({ ...filters, dateTo: e.target.value })} title="To" />
           {user && (
-            <label className="inline" style={{ color: 'var(--text-secondary)', fontSize: '0.8125rem', padding: '8px 14px', background: 'var(--glass)', borderRadius: '100px', cursor: 'pointer', border: '1px solid var(--glass-border)' }}>
+            <label className="pill-checkbox">
               <input type="checkbox" checked={filters.followedOnly}
                 onChange={e => setFilters({ ...filters, followedOnly: e.target.checked })} style={{ width: 'auto' }} />
               Following
