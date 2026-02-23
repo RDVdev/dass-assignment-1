@@ -56,14 +56,35 @@ const postToDiscord = async (organizerId, event) => {
   try {
     const org = await User.findById(organizerId);
     if (!org || !org.discordWebhook) return;
-    const fetch = (await import('node-fetch')).default;
-    await fetch(org.discordWebhook, {
+
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'TBD';
+
+    const payload = {
+      embeds: [{
+        title: `📢 ${event.name}`,
+        description: event.description || 'No description provided.',
+        color: event.type === 'Merchandise' ? 0xf59e0b : 0x3b82f6,
+        fields: [
+          { name: 'Type', value: event.type, inline: true },
+          { name: 'Date', value: fmtDate(event.startDate), inline: true },
+          { name: 'Price', value: event.price ? `₹${event.price}` : 'Free', inline: true },
+        ],
+        footer: { text: `Published by ${org.name} • Felicity IIIT-H` },
+        timestamp: new Date().toISOString()
+      }]
+    };
+
+    // Use built-in fetch (Node 18+) — no external dependency needed
+    const resp = await fetch(org.discordWebhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: `**New Event Published:** ${event.name}\n${event.description || ''}\nType: ${event.type}\nDate: ${event.startDate || 'TBD'}`
-      })
+      body: JSON.stringify(payload)
     });
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.error(`Discord webhook returned ${resp.status}: ${body}`);
+    }
   } catch (e) {
     console.error('Discord webhook failed:', e.message);
   }
