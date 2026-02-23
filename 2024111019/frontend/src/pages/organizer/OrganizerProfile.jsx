@@ -82,10 +82,10 @@ const OrganizerProfile = () => {
         <label>Website</label>
         <input value={form.website} onChange={set('website')} />
 
-        <label>Discord Webhook URL (auto-post new events)</label>
+        <label>Discord Webhook URL </label>
         <input value={form.discordWebhook} onChange={set('discordWebhook')} placeholder="https://discord.com/api/webhooks/..." />
 
-        <p><strong>Login Email (non-editable):</strong> {profile.email}</p>
+        <p><strong>Login Email :</strong> {profile.email}</p>
 
         <button className="btn" onClick={save}>Save Changes</button>
         {message && <p style={{ color: 'var(--green)' }}>{message}</p>}
