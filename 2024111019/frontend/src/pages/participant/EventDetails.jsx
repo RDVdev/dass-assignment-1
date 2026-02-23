@@ -1,7 +1,6 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { io } from 'socket.io-client';
 import { AuthContext, API_URL, getAuthHeader } from '../../context/AuthContext';
 
 const EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥'];
@@ -24,49 +23,29 @@ const EventDetails = () => {
   const [replyTo, setReplyTo] = useState(null);
   const [newCommentCount, setNewCommentCount] = useState(0);
   const commentsEndRef = useRef(null);
+  const prevCommentCountRef = useRef(0);
 
-  useEffect(() => {
+  const fetchEvent = useCallback(() => {
     axios.get(`${API_URL}/api/events/${id}`).then(r => {
       setEvent(r.data);
-      setComments(r.data.comments || []);
+      const fresh = r.data.comments || [];
+      setComments(fresh);
+      // Track new comments arriving from other users
+      if (prevCommentCountRef.current > 0 && fresh.length > prevCommentCountRef.current) {
+        setNewCommentCount(n => n + (fresh.length - prevCommentCountRef.current));
+      }
+      prevCommentCountRef.current = fresh.length;
     }).catch(() => navigate('/events'));
-  }, [id]);
+  }, [id, navigate]);
 
-  // Real-time comments via socket (forceNew to avoid stale cached sockets)
-  useEffect(() => {
-    const socket = io(API_URL, { forceNew: true });
-    // Join room on connect AND every reconnect so room membership survives network blips
-    socket.on('connect', () => {
-      socket.emit('joinEvent', id);
-    });
-    socket.on('commentAdded', c => {
-      setComments(prev => {
-        const cid = c._id || c.id;
-        if (prev.some(existing => (existing._id || existing.id) === cid)) return prev;
-        return [...prev, c];
-      });
-      setNewCommentCount(n => n + 1);
-    });
-    socket.on('commentDeleted', cid => setComments(prev => prev.filter(c => (c._id || c.id) !== cid)));
-    socket.on('reactionUpdated', data => {
-      setComments(prev => prev.map(c => (c._id || c.id) === data.commentId ? { ...c, reactions: data.reactions } : c));
-    });
-    socket.on('commentPinned', data => {
-      setEvent(prev => prev ? { ...prev, pinnedComments: data.pinnedComments } : prev);
-    });
-    return () => { socket.emit('leaveEvent', id); socket.disconnect(); };
-  }, [id]);
+  // Initial fetch
+  useEffect(() => { fetchEvent(); }, [fetchEvent]);
 
-  // Polling fallback: refresh comments every 3 seconds in case socket misses an update
+  // Poll every 2 seconds for real-time discussion updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      axios.get(`${API_URL}/api/events/${id}`).then(r => {
-        setComments(r.data.comments || []);
-        setEvent(prev => prev ? { ...prev, pinnedComments: r.data.pinnedComments } : prev);
-      }).catch(() => {});
-    }, 3000);
+    const interval = setInterval(fetchEvent, 2000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [fetchEvent]);
 
   if (!event) return <p className="center text-muted">Loading...</p>;
 
@@ -129,20 +108,17 @@ const EventDetails = () => {
     try {
       const body = { text: comment };
       if (replyTo) body.parentComment = replyTo;
-      const res = await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
-      const newComment = { ...res.data, user: { name: user?.name || 'You' }, reactions: [] };
-      // Optimistic local add; socket listener deduplicates via _id
-      setComments(prev => [...prev, newComment]);
+      await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
       setComment('');
       setReplyTo(null);
+      fetchEvent(); // Immediate refetch so comment appears instantly
     } catch { /* */ }
   };
 
   const handleReaction = async (commentId, emoji = '👍') => {
     try {
-      const res = await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
-      // Optimistic local update; socket listener will also deliver this (idempotent)
-      setComments(prev => prev.map(c => (c._id || c.id) === commentId ? { ...c, reactions: res.data.reactions } : c));
+      await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
+      fetchEvent(); // Immediate refetch so reaction updates instantly
     } catch { /* */ }
   };
 
