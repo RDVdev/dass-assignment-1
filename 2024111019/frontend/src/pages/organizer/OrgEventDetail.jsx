@@ -7,7 +7,6 @@ import { API_URL, getAuthHeader } from '../../context/AuthContext';
 const ALL_TABS = ['Overview', 'Participants', 'QR Scanner', 'Comments', 'Merch Orders'];
 const TYPE_COLOR = { Merchandise: 'var(--amber)', Normal: 'var(--blue)' };
 const STATUS_COLOR = { Published: 'var(--success)', Draft: 'var(--text-muted)', Ongoing: 'var(--accent-light)', Completed: 'var(--warning)', Closed: 'var(--danger)' };
-const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 const OrgEventDetail = () => {
   const { id } = useParams();
@@ -24,7 +23,6 @@ const OrgEventDetail = () => {
   const [scanning, setScanning] = useState(false);
   const scannerRef = useRef(null);
   const [merchOrders, setMerchOrders] = useState([]);
-  const [feedback, setFeedback] = useState(null);
 
   const set = (field) => (e) => setEditFields({ ...editFields, [field]: e.target.value });
 
@@ -49,7 +47,6 @@ const OrgEventDetail = () => {
         .then(r => setMerchOrders(r.data.filter(o => o.event?._id === id || o.event === id)))
         .catch(() => {});
     }
-    axios.get(`${API_URL}/api/events/${id}/feedback`).then(r => setFeedback(r.data)).catch(() => {});
   };
 
   const updateEvent = async () => {
@@ -182,13 +179,6 @@ const OrgEventDetail = () => {
               <div className="card stat-card"><h2>{stats.confirmed}</h2><p>Confirmed</p></div>
               <div className="card stat-card"><h2>{stats.attended}</h2><p>Attended</p></div>
               <div className="card stat-card"><h2>₹{stats.revenue}</h2><p>Revenue</p></div>
-            </div>
-          )}
-
-          {feedback?.total > 0 && (
-            <div className="section">
-              <h3>Feedback Summary</h3>
-              <p><span style={{ color: 'var(--warning)', fontSize: '1.2rem' }}>{stars(Math.round(feedback.averageRating))}</span> {feedback.averageRating}/5 ({feedback.total} reviews)</p>
             </div>
           )}
 

@@ -23,13 +23,13 @@ A MERN-stack based centralized platform for managing college fests, allowing org
 ## Implemented Advanced Features (30 Marks) [cite: 158]
 
 ### Tier A (8 Marks Each)
-1. **Hackathon Team Registration** [cite: 169]
-   - **Justification:** High-value feature for tech fests. Enables team leaders to create teams and generate invite codes.
-   - **Implementation:** Created a `Team` model. Registration is only confirmed when all members join using the unique code.
-
-2. **Merchandise Payment Approval Workflow**
+1. **Merchandise Payment Approval Workflow**
    - **Justification:** Essential for verifying real money transactions. Prevents fake orders.
    - **Implementation:** Users upload payment proof (image). Order status defaults to `Pending`. Organizers have a specialized dashboard to `Approve` (generate QR) or `Reject`.
+
+2. **QR Scanner & Attendance Tracking**
+   - **Justification:** Automates event check-in, replaces manual attendance.
+   - **Implementation:** Organizer event detail page has a QR Scanner tab with camera scanner (via html5-qrcode), image upload, and manual ticket-ID entry. Attendance is tracked and exportable as CSV.
 
 ### Tier B (6 Marks Each)
 1. **Organizer Password Reset Workflow** [cite: 188]
@@ -41,6 +41,6 @@ A MERN-stack based centralized platform for managing college fests, allowing org
    - **Implementation:** Event details page contains a comment section where participants can discuss and organizers can moderate.
 
 ### Tier C (2 Marks)
-1. **Anonymous Feedback System** [cite: 200]
-   - **Justification:** Helps organizers improve future events without user fear of judgment.
-   - **Implementation:** Simple form on completed events allowing 1-5 star rating and text feedback.
+1. **Add to Calendar Integration** [cite: 202]
+   - **Justification:** Enhances participant experience by letting them sync event times to their personal calendars.
+   - **Implementation:** Downloadable .ics files for universal import, plus direct Google Calendar and Outlook integration links on each event page.

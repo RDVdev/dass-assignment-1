@@ -57,14 +57,6 @@ const eventSchema = new mongoose.Schema(
       }
     ],
     viewCount: { type: Number, default: 0 },
-    feedback: [
-      {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        rating: { type: Number, min: 1, max: 5 },
-        comment: String,
-        createdAt: { type: Date, default: Date.now }
-      }
-    ],
     pinnedComments: [{ type: mongoose.Schema.Types.ObjectId }]
   },
   { timestamps: true }

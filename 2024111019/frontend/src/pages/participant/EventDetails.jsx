@@ -23,9 +23,6 @@ const EventDetails = () => {
   const [comments, setComments] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
   const [newCommentCount, setNewCommentCount] = useState(0);
-  const [feedback, setFeedback] = useState({ rating: 0, comment: '' });
-  const [fbData, setFbData] = useState(null);
-  const [fbFilter, setFbFilter] = useState(0);
   const socketRef = useRef(null);
   const commentsEndRef = useRef(null);
 
@@ -34,7 +31,6 @@ const EventDetails = () => {
       setEvent(r.data);
       setComments(r.data.comments || []);
     }).catch(() => navigate('/events'));
-    axios.get(`${API_URL}/api/events/${id}/feedback`).then(r => setFbData(r.data)).catch(() => {});
   }, [id]);
 
   // Real-time comments via socket
@@ -56,7 +52,6 @@ const EventDetails = () => {
   const limitReached = event.limit && event.registrationCount >= event.limit;
   const outOfStock = event.type === 'Merchandise' && event.stock !== undefined && event.stock <= 0;
   const canRegister = !deadlinePassed && !limitReached && !outOfStock && ['Published', 'Ongoing'].includes(event.status);
-  const isCompleted = event.status === 'Completed' || event.status === 'Closed';
 
   // --- Actions ---
   const handleRegister = async () => {
@@ -129,16 +124,6 @@ const EventDetails = () => {
     } catch { /* */ }
   };
 
-  const handleFeedback = async () => {
-    if (!feedback.rating) return;
-    try {
-      await axios.post(`${API_URL}/api/events/${id}/feedback`, feedback, getAuthHeader());
-      setMessage('✓ Feedback submitted!');
-      const r = await axios.get(`${API_URL}/api/events/${id}/feedback`);
-      setFbData(r.data);
-    } catch (err) { setMessage(err.response?.data?.msg || 'Feedback failed'); }
-  };
-
   // --- Calendar helpers ---
   const openGoogleCal = () => {
     const start = event.startDate ? new Date(event.startDate).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') : '';
@@ -153,8 +138,6 @@ const EventDetails = () => {
   };
 
   // --- Render helpers ---
-  const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
-
   const renderReactions = (c, isReply = false) => (
     <div className="reaction-bar">
       {EMOJIS.map(emoji => {
@@ -342,58 +325,6 @@ const EventDetails = () => {
           </div>
         )}
       </div>
-
-      {/* Feedback (completed events) */}
-      {isCompleted && (
-        <div className="section" style={{ marginTop: '1.5rem' }}>
-          <h2>Feedback</h2>
-          {fbData && (
-            <div style={{ marginBottom: '1rem' }}>
-              <p><strong>Average Rating:</strong> <span style={{ color: 'var(--warning)', fontSize: '1.2rem' }}>{stars(Math.round(fbData.averageRating))}</span> {fbData.averageRating}/5 ({fbData.total} reviews)</p>
-
-              <div className="inline" style={{ gap: '0.5rem', margin: '0.8rem 0' }}>
-                <label className="text-muted" style={{ fontSize: '0.85rem' }}>Filter by rating:</label>
-                <select value={fbFilter} onChange={async (e) => {
-                  const val = Number(e.target.value);
-                  setFbFilter(val);
-                  const url = val ? `${API_URL}/api/events/${id}/feedback?rating=${val}` : `${API_URL}/api/events/${id}/feedback`;
-                  const r = await axios.get(url);
-                  setFbData(r.data);
-                }} style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }}>
-                  <option value={0}>All Ratings</option>
-                  {[5, 4, 3, 2, 1].map(n => <option key={n} value={n}>{stars(n)} ({n})</option>)}
-                </select>
-                {fbFilter > 0 && <span className="text-muted" style={{ fontSize: '0.8rem' }}>Showing {fbData.filtered || fbData.feedback?.length} of {fbData.total}</span>}
-              </div>
-
-              {fbData.feedback?.map((f, i) => (
-                <div key={i} style={{ padding: '0.5rem 0', borderBottom: '1px solid var(--glass-border)' }}>
-                  <span style={{ color: 'var(--warning)' }}>{stars(f.rating)}</span>
-                  <p style={{ fontSize: '0.9rem' }}>{f.comment || 'No comment'}</p>
-                </div>
-              ))}
-              {fbData.feedback?.length === 0 && <p className="text-muted">No feedback for this rating.</p>}
-            </div>
-          )}
-
-          {user?.role === 'participant' && (
-            <div>
-              <label>Your Rating</label>
-              <div className="stars" style={{ marginBottom: '0.5rem' }}>
-                {[1, 2, 3, 4, 5].map(n => (
-                  <span key={n} className={`star ${feedback.rating >= n ? 'filled' : ''}`}
-                    onClick={() => setFeedback({ ...feedback, rating: n })}>★</span>
-                ))}
-              </div>
-              <textarea placeholder="Share your experience (anonymous)..." value={feedback.comment}
-                onChange={e => setFeedback({ ...feedback, comment: e.target.value })} rows={2} />
-              <button className="btn" style={{ marginTop: '0.5rem' }} onClick={handleFeedback} disabled={!feedback.rating}>
-                Submit Feedback
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };

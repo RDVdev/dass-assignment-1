@@ -529,53 +529,6 @@ exports.scanQR = async (req, res) => {
   }
 };
 
-// Anonymous feedback
-exports.submitFeedback = async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.status(404).json({ msg: 'Event not found' });
-    if (event.status !== 'Completed' && event.status !== 'Closed') {
-      return res.status(400).json({ msg: 'Feedback only for completed events' });
-    }
-    // Check user attended
-    const ticket = await Ticket.findOne({ event: event._id, user: req.user.id, status: 'Confirmed' });
-    if (!ticket) return res.status(403).json({ msg: 'Only registered participants can give feedback' });
-
-    // Check not already submitted
-    const alreadyFed = event.feedback?.some(f => f.user?.toString() === req.user.id);
-    if (alreadyFed) return res.status(400).json({ msg: 'Feedback already submitted' });
-
-    event.feedback.push({ user: req.user.id, rating: req.body.rating, comment: req.body.comment });
-    await event.save();
-    return res.json({ msg: 'Feedback submitted' });
-  } catch (error) {
-    return res.status(400).json({ msg: error.message });
-  }
-};
-
-// Get feedback for an event (supports ?rating=N filter)
-exports.getFeedback = async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id).select('feedback name');
-    if (!event) return res.status(404).json({ msg: 'Event not found' });
-    let fb = event.feedback || [];
-    
-    // Filter by rating if provided
-    if (req.query.rating) {
-      const rating = Number(req.query.rating);
-      if (rating >= 1 && rating <= 5) {
-        fb = fb.filter(f => f.rating === rating);
-      }
-    }
-    
-    const allFb = event.feedback || [];
-    const avg = allFb.length ? (allFb.reduce((s, f) => s + f.rating, 0) / allFb.length).toFixed(1) : 0;
-    return res.json({ feedback: fb, averageRating: Number(avg), total: allFb.length, filtered: fb.length });
-  } catch (error) {
-    return res.status(500).json({ msg: error.message });
-  }
-};
-
 // Delete comment (organizer moderation, ownership verified)
 exports.deleteComment = async (req, res) => {
   try {

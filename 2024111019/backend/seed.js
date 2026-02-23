@@ -331,34 +331,6 @@ const pick = (arr, n) => shuffle([...arr]).slice(0, n);
       await event.save();
     }
 
-    // ---- Feedback for completed events ----
-    console.log('Adding feedback...');
-    for (const event of eventDocs.filter(e => e.status === 'Completed')) {
-      const fbGivers = pick(partDocs, 30);
-      for (const p of fbGivers) {
-        const rating = Math.floor(Math.random() * 3) + 3; // 3-5 stars
-        const fbComments = [
-          'Excellent event! Learned so much.',
-          'Well organized, great speakers.',
-          'Good event but could improve time management.',
-          'Absolutely loved it! Would attend again.',
-          'Decent event, expected more hands-on content.',
-          'The best event I\'ve attended this semester!',
-          'Great networking opportunities.',
-          'Venue was perfect, food was great.',
-          'Really inspiring sessions.',
-          'Could be longer, felt too short.'
-        ];
-        event.feedback.push({
-          user: p._id,
-          rating,
-          comment: fbComments[Math.floor(Math.random() * fbComments.length)],
-          createdAt: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000)
-        });
-      }
-      await event.save();
-    }
-
     console.log(`\n${'═'.repeat(50)}`);
     console.log('  SEED COMPLETE');
     console.log(`${'═'.repeat(50)}`);
