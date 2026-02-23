@@ -31,6 +31,9 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
+// Make io accessible from route handlers via req.app.get('io')
+app.set('io', io);
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/events', require('./routes/eventRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));

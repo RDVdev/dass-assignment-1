@@ -23,7 +23,6 @@ const EventDetails = () => {
   const [comments, setComments] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
   const [newCommentCount, setNewCommentCount] = useState(0);
-  const socketRef = useRef(null);
   const commentsEndRef = useRef(null);
 
   useEffect(() => {
@@ -36,12 +35,21 @@ const EventDetails = () => {
   // Real-time comments via socket
   useEffect(() => {
     const socket = io(API_URL);
-    socketRef.current = socket;
     socket.emit('joinEvent', id);
-    socket.on('commentAdded', c => { setComments(prev => [...prev, c]); setNewCommentCount(n => n + 1); });
+    socket.on('commentAdded', c => {
+      setComments(prev => {
+        const cid = c._id || c.id;
+        if (prev.some(existing => (existing._id || existing.id) === cid)) return prev;
+        return [...prev, c];
+      });
+      setNewCommentCount(n => n + 1);
+    });
     socket.on('commentDeleted', cid => setComments(prev => prev.filter(c => (c._id || c.id) !== cid)));
     socket.on('reactionUpdated', data => {
       setComments(prev => prev.map(c => (c._id || c.id) === data.commentId ? { ...c, reactions: data.reactions } : c));
+    });
+    socket.on('commentPinned', data => {
+      setEvent(prev => prev ? { ...prev, pinnedComments: data.pinnedComments } : prev);
     });
     return () => { socket.emit('leaveEvent', id); socket.disconnect(); };
   }, [id]);
@@ -109,7 +117,7 @@ const EventDetails = () => {
       if (replyTo) body.parentComment = replyTo;
       const res = await axios.post(`${API_URL}/api/events/${id}/comments`, body, getAuthHeader());
       const newComment = { ...res.data, user: { name: user?.name || 'You' }, reactions: [] };
-      socketRef.current?.emit('newComment', { eventId: id, comment: newComment });
+      // Optimistic local add; socket listener deduplicates via _id
       setComments(prev => [...prev, newComment]);
       setComment('');
       setReplyTo(null);
@@ -119,8 +127,8 @@ const EventDetails = () => {
   const handleReaction = async (commentId, emoji = '👍') => {
     try {
       const res = await axios.post(`${API_URL}/api/events/${id}/comments/${commentId}/react`, { emoji }, getAuthHeader());
+      // Optimistic local update; socket listener will also deliver this (idempotent)
       setComments(prev => prev.map(c => (c._id || c.id) === commentId ? { ...c, reactions: res.data.reactions } : c));
-      socketRef.current?.emit('reactionToggled', { eventId: id, commentId, reactions: res.data.reactions });
     } catch { /* */ }
   };
 

@@ -368,6 +368,17 @@ exports.addComment = async (req, res) => {
     event.comments.push(newComment);
     await event.save();
     const saved = event.comments[event.comments.length - 1];
+
+    // Broadcast via Socket.IO for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      const u = await User.findById(req.user.id, 'name');
+      io.to(`event-${req.params.id}`).emit('commentAdded', {
+        ...saved.toObject(),
+        user: { _id: req.user.id, name: u?.name || 'User' }
+      });
+    }
+
     return res.json(saved);
   } catch (error) {
     return res.status(400).json({ msg: error.message });
@@ -390,6 +401,16 @@ exports.toggleReaction = async (req, res) => {
       comment.reactions.push({ user: req.user.id, emoji });
     }
     await event.save();
+
+    // Broadcast via Socket.IO for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`event-${req.params.id}`).emit('reactionUpdated', {
+        commentId: req.params.commentId,
+        reactions: comment.reactions
+      });
+    }
+
     return res.json({ reactions: comment.reactions });
   } catch (error) {
     return res.status(400).json({ msg: error.message });
@@ -540,6 +561,13 @@ exports.deleteComment = async (req, res) => {
     }
     event.comments = event.comments.filter(c => c._id.toString() !== req.params.commentId);
     await event.save();
+
+    // Broadcast via Socket.IO for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`event-${req.params.id}`).emit('commentDeleted', req.params.commentId);
+    }
+
     return res.json({ msg: 'Comment deleted' });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
@@ -562,6 +590,16 @@ exports.pinComment = async (req, res) => {
       event.pinnedComments = [...(event.pinnedComments || []), cid];
     }
     await event.save();
+
+    // Broadcast via Socket.IO for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`event-${req.params.id}`).emit('commentPinned', {
+        commentId: cid,
+        pinnedComments: event.pinnedComments
+      });
+    }
+
     return res.json({ msg: 'Pin toggled' });
   } catch (error) {
     return res.status(500).json({ msg: error.message });
