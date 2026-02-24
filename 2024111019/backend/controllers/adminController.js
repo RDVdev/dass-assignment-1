@@ -17,10 +17,24 @@ const transporter = nodemailer.createTransport({
 const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
   if (!process.env.SMTP_USER) return;
   try {
+    // Build inline attachment for QR code (email clients block base64 data URIs)
+    const attachments = [];
+    let qrHtml = '';
+    if (ticket.qrCode && ticket.qrCode.startsWith('data:image/png;base64,')) {
+      const base64Data = ticket.qrCode.replace(/^data:image\/png;base64,/, '');
+      attachments.push({
+        filename: 'qrcode.png',
+        content: Buffer.from(base64Data, 'base64'),
+        cid: 'qrcode@felicity'
+      });
+      qrHtml = '<div style="text-align:center;margin:20px 0"><p style="color:#666">Your QR Code (show this for collection):</p><img src="cid:qrcode@felicity" alt="QR Code" style="width:200px;height:200px" /></div>';
+    }
+
     await transporter.sendMail({
       from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `✅ Order Confirmed - ${event.name}`,
+      attachments,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
           <div style="background:#10b981;color:white;padding:20px;text-align:center">
@@ -35,7 +49,7 @@ const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
               <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Quantity</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.formData?.quantity || 1}</td></tr>
               <tr><td style="padding:8px;font-weight:bold">Status</td><td style="padding:8px;color:#10b981;font-weight:bold">✅ Confirmed</td></tr>
             </table>
-            ${ticket.qrCode ? `<div style="text-align:center;margin:20px 0"><p style="color:#666">Your QR Code (show this for collection):</p><img src="${ticket.qrCode}" alt="QR Code" style="width:200px;height:200px" /></div>` : ''}
+            ${qrHtml}
             <p style="color:#666;font-size:14px">Your payment has been verified and your order is confirmed. Show the QR code above when collecting your merchandise.</p>
           </div>
           <div style="background:#f5f5f5;padding:12px;text-align:center;font-size:12px;color:#999">Felicity IIIT-H Event Management</div>

@@ -43,10 +43,24 @@ const sendTicketEmail = async (userEmail, ticket, event) => {
 
     const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBD';
 
+    // Build inline attachments for QR code (email clients block base64 data URIs)
+    const attachments = [];
+    let qrHtml = '';
+    if (ticket.qrCode && ticket.qrCode.startsWith('data:image/png;base64,')) {
+      const base64Data = ticket.qrCode.replace(/^data:image\/png;base64,/, '');
+      attachments.push({
+        filename: 'qrcode.png',
+        content: Buffer.from(base64Data, 'base64'),
+        cid: 'qrcode@felicity'
+      });
+      qrHtml = '<div style="text-align:center;margin:20px 0"><p style="color:#666">Your QR Code:</p><img src="cid:qrcode@felicity" alt="QR Code" style="width:200px;height:200px" /></div>';
+    }
+
     await transporter.sendMail({
       from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `${isRegistration ? '🎫' : '🛍️'} ${headerText} - ${event.name}`,
+      attachments,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
           <div style="background:${headerBg};color:white;padding:20px;text-align:center">
@@ -63,7 +77,7 @@ const sendTicketEmail = async (userEmail, ticket, event) => {
               ${event.price ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Price</td><td style="padding:8px;border-bottom:1px solid #eee">₹${event.price}</td></tr>` : ''}
               <tr><td style="padding:8px;font-weight:bold">Status</td><td style="padding:8px;color:${statusColor};font-weight:bold">${ticket.status}</td></tr>
             </table>
-            ${ticket.qrCode ? `<div style="text-align:center;margin:20px 0"><p style="color:#666">Your QR Code:</p><img src="${ticket.qrCode}" alt="QR Code" style="width:200px;height:200px" /></div>` : ''}
+            ${qrHtml}
             ${!isRegistration && ticket.status === 'Pending Approval' ? '<p style="color:#f59e0b;font-size:14px">⏳ Your order is pending payment verification. You will receive another email once approved.</p>' : ''}
             ${isRegistration ? '<p style="color:#666;font-size:14px">Show the QR code above at the event entrance for check-in.</p>' : ''}
           </div>
