@@ -2,17 +2,7 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
 const QRCode = require('qrcode');
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  family: 4,
-  auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || ''
-  }
-});
+const { transporter, isMailConfigured, getSmtpUser } = require('../config/mailer');
 
 // Auto-determine event status based on current time vs start/end dates
 const computeEventStatus = (event) => {
@@ -35,7 +25,7 @@ const applyAutoStatus = async (event) => {
 };
 
 const sendTicketEmail = async (userEmail, ticket, event) => {
-  if (!process.env.SMTP_USER) return;
+  if (!isMailConfigured()) return;
   try {
     const isRegistration = ticket.type === 'Registration';
     const statusColor = ticket.status === 'Confirmed' ? '#10b981' : (ticket.status === 'Pending Approval' ? '#f59e0b' : '#3b82f6');
@@ -58,7 +48,7 @@ const sendTicketEmail = async (userEmail, ticket, event) => {
     }
 
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
+      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
       to: userEmail,
       subject: `${isRegistration ? '🎫' : '🛍️'} ${headerText} - ${event.name}`,
       attachments,
@@ -87,7 +77,12 @@ const sendTicketEmail = async (userEmail, ticket, event) => {
     });
     console.log(`✓ Ticket email sent to ${userEmail}`);
   } catch (e) {
-    console.error('Email send failed:', e.message);
+    console.error('Email send failed:', {
+      message: e.message,
+      code: e.code,
+      responseCode: e.responseCode,
+      response: e.response
+    });
   }
 };
 

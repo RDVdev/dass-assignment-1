@@ -1,12 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+dotenv.config();
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
-
-dotenv.config();
+const { transporter, isMailConfigured, getMailDebugConfig, getSmtpUser } = require('./config/mailer');
 connectDB();
 
 const app = express();
@@ -33,24 +33,15 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Temporary: test email endpoint (remove after verification)
 app.get('/api/test-email', async (_req, res) => {
-  const nodemailer = require('nodemailer');
   const QRCode = require('qrcode');
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  if (!smtpUser || !smtpPass) {
-    return res.json({ error: 'SMTP not configured', SMTP_USER: !!smtpUser, SMTP_PASS: !!smtpPass });
+  if (!isMailConfigured()) {
+    return res.json({ error: 'SMTP not configured', ...getMailDebugConfig() });
   }
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 465,
-      secure: (Number(process.env.SMTP_PORT) || 465) === 465,
-      auth: { user: smtpUser, pass: smtpPass }
-    });
     const qr = await QRCode.toDataURL(JSON.stringify({ ticketId: 'TKT-RENDER-TEST', event: 'Deploy Test' }));
     const base64Data = qr.replace(/^data:image\/png;base64,/, '');
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${smtpUser}>`,
+      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
       to: '13devanshbansal@gmail.com',
       subject: '🎫 DEPLOYED: Registration Test with QR',
       attachments: [{ filename: 'qrcode.png', content: Buffer.from(base64Data, 'base64'), cid: 'qrcode@felicity' }],
@@ -58,7 +49,13 @@ app.get('/api/test-email', async (_req, res) => {
     });
     return res.json({ success: true, sentTo: '13devanshbansal@gmail.com' });
   } catch (e) {
-    return res.json({ error: e.message });
+    return res.json({
+      error: e.message,
+      code: e.code,
+      responseCode: e.responseCode,
+      response: e.response,
+      ...getMailDebugConfig()
+    });
   }
 });
 

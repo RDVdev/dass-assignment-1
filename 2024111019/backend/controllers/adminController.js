@@ -3,20 +3,10 @@ const User = require('../models/User');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const QRCode = require('qrcode');
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  family: 4,
-  auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || ''
-  }
-});
+const { transporter, isMailConfigured, getSmtpUser } = require('../config/mailer');
 
 const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
-  if (!process.env.SMTP_USER) return;
+  if (!isMailConfigured()) return;
   try {
     // Build inline attachment for QR code (email clients block base64 data URIs)
     const attachments = [];
@@ -32,7 +22,7 @@ const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
     }
 
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
+      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
       to: userEmail,
       subject: `✅ Order Confirmed - ${event.name}`,
       attachments,
@@ -58,15 +48,20 @@ const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
     });
     console.log(`✓ Merch approval email sent to ${userEmail}`);
   } catch (e) {
-    console.error('Merch approval email failed:', e.message);
+    console.error('Merch approval email failed:', {
+      message: e.message,
+      code: e.code,
+      responseCode: e.responseCode,
+      response: e.response
+    });
   }
 };
 
 const sendMerchRejectionEmail = async (userEmail, ticket, event) => {
-  if (!process.env.SMTP_USER) return;
+  if (!isMailConfigured()) return;
   try {
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
+      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
       to: userEmail,
       subject: `❌ Order Rejected - ${event.name}`,
       html: `
@@ -84,7 +79,12 @@ const sendMerchRejectionEmail = async (userEmail, ticket, event) => {
     });
     console.log(`✓ Merch rejection email sent to ${userEmail}`);
   } catch (e) {
-    console.error('Merch rejection email failed:', e.message);
+    console.error('Merch rejection email failed:', {
+      message: e.message,
+      code: e.code,
+      responseCode: e.responseCode,
+      response: e.response
+    });
   }
 };
 
