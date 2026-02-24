@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const { transporter, isMailConfigured, getMailFrom } = require('../config/mailer');
 
 const signToken = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -240,17 +241,11 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     // Try to send email
-    if (process.env.SMTP_USER) {
+    if (isMailConfigured()) {
       try {
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'smtp.gmail.com',
-          port: Number(process.env.SMTP_PORT) || 587,
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-        });
         const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
         await transporter.sendMail({
-          from: process.env.SMTP_USER,
+          from: getMailFrom(),
           to: email,
           subject: 'Password Reset - Felicity',
           html: `<h2>Password Reset Request</h2>
@@ -260,7 +255,12 @@ exports.forgotPassword = async (req, res) => {
         });
         return res.json({ msg: 'Password reset email sent. Check your inbox.' });
       } catch (emailErr) {
-        console.error('Email send failed, returning token directly:', emailErr.message);
+        console.error('Email send failed, returning token directly:', {
+          message: emailErr.message,
+          code: emailErr.code,
+          responseCode: emailErr.responseCode,
+          response: emailErr.response
+        });
       }
     }
 
@@ -296,5 +296,4 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).json({ msg: error.message });
   }
 };
-
 

@@ -2,7 +2,7 @@ const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
 const QRCode = require('qrcode');
-const { transporter, isMailConfigured, getSmtpUser } = require('../config/mailer');
+const { transporter, isMailConfigured, getMailFrom } = require('../config/mailer');
 
 // Auto-determine event status based on current time vs start/end dates
 const computeEventStatus = (event) => {
@@ -48,7 +48,7 @@ const sendTicketEmail = async (userEmail, ticket, event) => {
     }
 
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
+      from: getMailFrom(),
       to: userEmail,
       subject: `${isRegistration ? '🎫' : '🛍️'} ${headerText} - ${event.name}`,
       attachments,

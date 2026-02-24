@@ -6,7 +6,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
-const { transporter, isMailConfigured, getMailDebugConfig, getSmtpUser } = require('./config/mailer');
+const { transporter, isMailConfigured, getMailDebugConfig, getMailFrom } = require('./config/mailer');
 connectDB();
 
 const app = express();
@@ -35,13 +35,13 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/api/test-email', async (_req, res) => {
   const QRCode = require('qrcode');
   if (!isMailConfigured()) {
-    return res.json({ error: 'SMTP not configured', ...getMailDebugConfig() });
+    return res.json({ error: 'Mail not configured', ...getMailDebugConfig() });
   }
   try {
     const qr = await QRCode.toDataURL(JSON.stringify({ ticketId: 'TKT-RENDER-TEST', event: 'Deploy Test' }));
     const base64Data = qr.replace(/^data:image\/png;base64,/, '');
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
+      from: getMailFrom(),
       to: '13devanshbansal@gmail.com',
       subject: '🎫 DEPLOYED: Registration Test with QR',
       attachments: [{ filename: 'qrcode.png', content: Buffer.from(base64Data, 'base64'), cid: 'qrcode@felicity' }],

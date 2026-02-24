@@ -3,7 +3,7 @@ const User = require('../models/User');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const QRCode = require('qrcode');
-const { transporter, isMailConfigured, getSmtpUser } = require('../config/mailer');
+const { transporter, isMailConfigured, getMailFrom } = require('../config/mailer');
 
 const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
   if (!isMailConfigured()) return;
@@ -22,7 +22,7 @@ const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
     }
 
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
+      from: getMailFrom(),
       to: userEmail,
       subject: `✅ Order Confirmed - ${event.name}`,
       attachments,
@@ -61,7 +61,7 @@ const sendMerchRejectionEmail = async (userEmail, ticket, event) => {
   if (!isMailConfigured()) return;
   try {
     await transporter.sendMail({
-      from: `"Felicity IIIT-H" <${getSmtpUser()}>`,
+      from: getMailFrom(),
       to: userEmail,
       subject: `❌ Order Rejected - ${event.name}`,
       html: `
