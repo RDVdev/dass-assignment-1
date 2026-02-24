@@ -1,4 +1,9 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 const getMailConfig = () => {
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -21,6 +26,7 @@ const transporter = {
       port: smtpPort,
       secure,
       family: 4,
+      lookup: (hostname, _options, callback) => dns.lookup(hostname, { family: 4, all: false }, callback),
       auth: { user: smtpUser, pass: smtpPass }
     });
     return instance.sendMail(mailOptions);
