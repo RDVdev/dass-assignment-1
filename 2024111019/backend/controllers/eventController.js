@@ -36,17 +36,41 @@ const applyAutoStatus = async (event) => {
 const sendTicketEmail = async (userEmail, ticket, event) => {
   if (!process.env.SMTP_USER) return;
   try {
+    const isRegistration = ticket.type === 'Registration';
+    const statusColor = ticket.status === 'Confirmed' ? '#10b981' : (ticket.status === 'Pending Approval' ? '#f59e0b' : '#3b82f6');
+    const headerBg = isRegistration ? '#3b82f6' : '#f59e0b';
+    const headerText = isRegistration ? 'Registration Confirmed!' : 'Merchandise Order Placed';
+
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'TBD';
+
     await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
       to: userEmail,
-      subject: `Ticket Confirmation - ${event.name}`,
-      html: `<h2>Ticket Confirmed</h2>
-        <p><strong>Event:</strong> ${event.name}</p>
-        <p><strong>Ticket ID:</strong> ${ticket.ticketId}</p>
-        <p><strong>Type:</strong> ${ticket.type}</p>
-        <p><strong>Status:</strong> ${ticket.status}</p>
-        ${ticket.qrCode ? `<img src="${ticket.qrCode}" alt="QR Code" />` : ''}`
+      subject: `${isRegistration ? '🎫' : '🛍️'} ${headerText} - ${event.name}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+          <div style="background:${headerBg};color:white;padding:20px;text-align:center">
+            <h1 style="margin:0">${headerText}</h1>
+          </div>
+          <div style="padding:24px">
+            <h2 style="color:#333;margin-top:0">${event.name}</h2>
+            ${event.description ? `<p style="color:#666">${event.description.substring(0, 150)}...</p>` : ''}
+            <table style="width:100%;border-collapse:collapse;margin:16px 0">
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Ticket ID</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.ticketId}</td></tr>
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Type</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.type}</td></tr>
+              ${isRegistration && event.startDate ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Event Date</td><td style="padding:8px;border-bottom:1px solid #eee">${fmtDate(event.startDate)}</td></tr>` : ''}
+              ${!isRegistration && ticket.formData?.variant ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Item</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.formData.variant} (${ticket.formData.size || ''} / ${ticket.formData.color || ''})</td></tr>` : ''}
+              ${event.price ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Price</td><td style="padding:8px;border-bottom:1px solid #eee">₹${event.price}</td></tr>` : ''}
+              <tr><td style="padding:8px;font-weight:bold">Status</td><td style="padding:8px;color:${statusColor};font-weight:bold">${ticket.status}</td></tr>
+            </table>
+            ${ticket.qrCode ? `<div style="text-align:center;margin:20px 0"><p style="color:#666">Your QR Code:</p><img src="${ticket.qrCode}" alt="QR Code" style="width:200px;height:200px" /></div>` : ''}
+            ${!isRegistration && ticket.status === 'Pending Approval' ? '<p style="color:#f59e0b;font-size:14px">⏳ Your order is pending payment verification. You will receive another email once approved.</p>' : ''}
+            ${isRegistration ? '<p style="color:#666;font-size:14px">Show the QR code above at the event entrance for check-in.</p>' : ''}
+          </div>
+          <div style="background:#f5f5f5;padding:12px;text-align:center;font-size:12px;color:#999">Felicity IIIT-H Event Management</div>
+        </div>`
     });
+    console.log(`✓ Ticket email sent to ${userEmail}`);
   } catch (e) {
     console.error('Email send failed:', e.message);
   }

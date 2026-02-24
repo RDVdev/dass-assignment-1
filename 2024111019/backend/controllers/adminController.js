@@ -3,6 +3,75 @@ const User = require('../models/User');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 const QRCode = require('qrcode');
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: Number(process.env.SMTP_PORT) || 587,
+  auth: {
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || ''
+  }
+});
+
+const sendMerchApprovalEmail = async (userEmail, ticket, event) => {
+  if (!process.env.SMTP_USER) return;
+  try {
+    await transporter.sendMail({
+      from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
+      to: userEmail,
+      subject: `✅ Order Confirmed - ${event.name}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+          <div style="background:#10b981;color:white;padding:20px;text-align:center">
+            <h1 style="margin:0">Order Confirmed!</h1>
+          </div>
+          <div style="padding:24px">
+            <h2 style="color:#333">${event.name}</h2>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0">
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Ticket ID</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.ticketId}</td></tr>
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Type</td><td style="padding:8px;border-bottom:1px solid #eee">Merchandise</td></tr>
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Variant</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.formData?.variant || 'N/A'} (${ticket.formData?.size || ''} / ${ticket.formData?.color || ''})</td></tr>
+              <tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">Quantity</td><td style="padding:8px;border-bottom:1px solid #eee">${ticket.formData?.quantity || 1}</td></tr>
+              <tr><td style="padding:8px;font-weight:bold">Status</td><td style="padding:8px;color:#10b981;font-weight:bold">✅ Confirmed</td></tr>
+            </table>
+            ${ticket.qrCode ? `<div style="text-align:center;margin:20px 0"><p style="color:#666">Your QR Code (show this for collection):</p><img src="${ticket.qrCode}" alt="QR Code" style="width:200px;height:200px" /></div>` : ''}
+            <p style="color:#666;font-size:14px">Your payment has been verified and your order is confirmed. Show the QR code above when collecting your merchandise.</p>
+          </div>
+          <div style="background:#f5f5f5;padding:12px;text-align:center;font-size:12px;color:#999">Felicity IIIT-H Event Management</div>
+        </div>`
+    });
+    console.log(`✓ Merch approval email sent to ${userEmail}`);
+  } catch (e) {
+    console.error('Merch approval email failed:', e.message);
+  }
+};
+
+const sendMerchRejectionEmail = async (userEmail, ticket, event) => {
+  if (!process.env.SMTP_USER) return;
+  try {
+    await transporter.sendMail({
+      from: `"Felicity IIIT-H" <${process.env.SMTP_USER}>`,
+      to: userEmail,
+      subject: `❌ Order Rejected - ${event.name}`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+          <div style="background:#ef4444;color:white;padding:20px;text-align:center">
+            <h1 style="margin:0">Order Rejected</h1>
+          </div>
+          <div style="padding:24px">
+            <h2 style="color:#333">${event.name}</h2>
+            <p>Your merchandise order <strong>${ticket.ticketId}</strong> for <strong>${ticket.formData?.variant || 'item'}</strong> has been rejected.</p>
+            <p style="color:#666">This may be due to an invalid payment proof. Please contact the organizer for more details or place a new order with valid payment proof.</p>
+          </div>
+          <div style="background:#f5f5f5;padding:12px;text-align:center;font-size:12px;color:#999">Felicity IIIT-H Event Management</div>
+        </div>`
+    });
+    console.log(`✓ Merch rejection email sent to ${userEmail}`);
+  } catch (e) {
+    console.error('Merch rejection email failed:', e.message);
+  }
+};
 
 exports.getOrganizers = async (_req, res) => {
   try {
@@ -161,6 +230,18 @@ exports.reviewMerchOrder = async (req, res) => {
     }
 
     await ticket.save();
+
+    // Send email notifications
+    const user = await User.findById(ticket.user);
+    if (user) {
+      const eventDoc = ticket.event;
+      if (action === 'approve') {
+        sendMerchApprovalEmail(user.email, ticket, eventDoc);
+      } else if (action === 'reject') {
+        sendMerchRejectionEmail(user.email, ticket, eventDoc);
+      }
+    }
+
     return res.json(ticket);
   } catch (error) {
     return res.status(500).json({ msg: error.message });
