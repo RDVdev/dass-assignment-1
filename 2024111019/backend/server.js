@@ -43,7 +43,8 @@ app.get('/api/test-email', async (_req, res) => {
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: (Number(process.env.SMTP_PORT) || 465) === 465,
       auth: { user: smtpUser, pass: smtpPass }
     });
     const qr = await QRCode.toDataURL(JSON.stringify({ ticketId: 'TKT-RENDER-TEST', event: 'Deploy Test' }));
