@@ -31,6 +31,36 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
+// Temporary: test email endpoint (remove after verification)
+app.get('/api/test-email', async (_req, res) => {
+  const nodemailer = require('nodemailer');
+  const QRCode = require('qrcode');
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  if (!smtpUser || !smtpPass) {
+    return res.json({ error: 'SMTP not configured', SMTP_USER: !!smtpUser, SMTP_PASS: !!smtpPass });
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT) || 587,
+      auth: { user: smtpUser, pass: smtpPass }
+    });
+    const qr = await QRCode.toDataURL(JSON.stringify({ ticketId: 'TKT-RENDER-TEST', event: 'Deploy Test' }));
+    const base64Data = qr.replace(/^data:image\/png;base64,/, '');
+    await transporter.sendMail({
+      from: `"Felicity IIIT-H" <${smtpUser}>`,
+      to: '13devanshbansal@gmail.com',
+      subject: '🎫 DEPLOYED: Registration Test with QR',
+      attachments: [{ filename: 'qrcode.png', content: Buffer.from(base64Data, 'base64'), cid: 'qrcode@felicity' }],
+      html: '<div style="font-family:Arial;max-width:600px;margin:0 auto;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden"><div style="background:#3b82f6;color:white;padding:20px;text-align:center"><h1 style="margin:0">Deployed Email Works!</h1></div><div style="padding:24px"><p>This email was sent from the <strong>Render deployed server</strong>.</p><p>Ticket: TKT-RENDER-TEST</p><div style="text-align:center;margin:20px 0"><img src="cid:qrcode@felicity" alt="QR" style="width:200px;height:200px" /></div></div></div>'
+    });
+    return res.json({ success: true, sentTo: '13devanshbansal@gmail.com' });
+  } catch (e) {
+    return res.json({ error: e.message });
+  }
+});
+
 // Make io accessible from route handlers via req.app.get('io')
 app.set('io', io);
 
